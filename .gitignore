@@ -1,0 +1,71 @@
+# ------------------------------------------------------------------------------
+# FLUTTER & DART
+# ------------------------------------------------------------------------------
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+.idea/
+
+# Flutter/Dart build artifacts
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+__pycache__/
+
+# Android specific
+.gradle/
+local.properties
+ant-properties.xml
+proguard-rules.pro
+*.jks
+*.keystore
+*.apk
+*.aab
+
+# iOS specific
+.generated/
+DerivedData/
+Runner.xcworkspace/
+xcuserdata/
+*.moved-aside
+Podfile.lock
+Pods/
+ServiceDeviceRepo/
+
+# ------------------------------------------------------------------------------
+# EXPRESS.JS / NODE.JS
+# ------------------------------------------------------------------------------
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ------------------------------------------------------------------------------
+# SERVER & ENVIRONMENT (CRITICAL)
+# ------------------------------------------------------------------------------
+# Never commit your home server IPs, passwords, or API keys
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker
+.docker/
