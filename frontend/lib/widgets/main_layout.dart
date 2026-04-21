@@ -23,16 +23,42 @@ class MainLayout extends StatelessWidget {
 
   void _showCreateGroupDialog(BuildContext context) {
     final controller = TextEditingController();
+    bool isShared = false; // Local state for the dialog
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Create New Group'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Group Name (e.g., Camping Trip)',
-            border: OutlineInputBorder(),
-          ),
+        content: StatefulBuilder( // Allows the checkbox to update inside the dialog
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Group Name (e.g., Camping Trip)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Share this group'),
+                  subtitle: const Text('Syncs with the server for everyone'),
+                  value: isShared,
+                  activeColor: Theme.of(context).colorScheme.primary,
+                  onChanged: (bool? value) {
+                    setDialogState(() {
+                      isShared = value ?? false;
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -42,7 +68,11 @@ class MainLayout extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isNotEmpty) {
-                await repository.createGroup(controller.text);
+                // Pass the isShared value to your repository
+                await repository.createGroup(
+                    controller.text,
+                    isShared: isShared
+                );
                 if (context.mounted) Navigator.pop(ctx);
               }
             },
@@ -115,7 +145,15 @@ class MainLayout extends StatelessWidget {
                         items: groups.map((group) {
                           return DropdownMenuItem<String>(
                             value: group.id,
-                            child: Text(group.name),
+                            child: Row(
+                              children: [
+                                Text(group.name),
+                                if (group.isShared) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.cloud_queue, size: 16, color: Colors.blue),
+                                ],
+                              ],
+                            ),
                           );
                         }).toList(),
                         onChanged: (String? newValue) async {

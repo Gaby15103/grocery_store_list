@@ -20,6 +20,14 @@ class GroceryItem extends HiveObject {
   @HiveField(5) String? addedBy;    // User ID/Name who created it
   @HiveField(6) String? modifiedBy; // User ID/Name who last changed status
 
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'status': status.name, // pending, bought, etc.
+    'createdAt': createdAt.toIso8601String(),
+    'listId': listId,
+    'groupId': groupId,
+  };
+
   GroceryItem({
     required this.name,
     this.status = ItemStatus.pending,
