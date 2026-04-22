@@ -38,6 +38,7 @@ class ListSelectionScreen extends StatelessWidget {
             onPressed: () async {
               if (controller.text.isNotEmpty) {
                 await repository.createList(controller.text, groupId);
+                await repository.getListsForGroup(groupId);
                 if (context.mounted) Navigator.pop(ctx);
               }
             },

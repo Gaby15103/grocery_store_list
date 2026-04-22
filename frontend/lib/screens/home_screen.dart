@@ -6,7 +6,6 @@ import '../widgets/main_layout.dart';
 
 class HomeScreen extends StatefulWidget {
   final GroceryRepository repository;
-  // This is now mandatory for the home screen to know which list to display
   final String? sessionId;
 
   const HomeScreen({super.key, required this.repository, this.sessionId});
@@ -18,20 +17,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controller = TextEditingController();
 
-  // If sessionId is null, we are likely in an error state or default view.
-  // In your new flow, sessionId should always be passed from the ListSelectionScreen.
-  bool get isHistoryMode => widget.sessionId == null;
+  @override
+  void initState() {
+    super.initState();
+    // Fill the Hive box from the server as soon as we land on the screen
+    if (widget.sessionId != null) {
+      widget.repository.getItemsForList(widget.sessionId!);
+    }
+  }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (_controller.text.isNotEmpty && widget.sessionId != null) {
       final activeGroupId = widget.repository.getActiveGroupId();
-      widget.repository.addItemToList(
+
+      await widget.repository.addItemToList(
           _controller.text,
           widget.sessionId!,
           activeGroupId
       );
+
       _controller.clear();
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -43,77 +49,34 @@ class _HomeScreenState extends State<HomeScreen> {
         content: TextField(
           controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g., Milk, Eggs, Rust Book',
-            border: OutlineInputBorder(),
-          ),
           onSubmitted: (_) => _handleSave(),
+          decoration: const InputDecoration(hintText: 'e.g., Milk', border: OutlineInputBorder()),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _handleSave,
-            child: const Text('Add'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(onPressed: _handleSave, child: const Text('Add')),
         ],
       ),
     );
   }
 
   TextStyle _getItemStyle(ItemStatus status) {
-    switch (status) {
-      case ItemStatus.bought:
-        return const TextStyle(
-          decoration: TextDecoration.lineThrough,
-          color: Colors.grey,
-        );
-      case ItemStatus.discarded:
-        return const TextStyle(
-          fontStyle: FontStyle.italic,
-          color: Colors.orangeAccent,
-          decoration: TextDecoration.lineThrough,
-        );
-      default:
-        return const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        );
-    }
+    if (status == ItemStatus.bought) return const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey);
+    if (status == ItemStatus.discarded) return const TextStyle(fontStyle: FontStyle.italic, color: Colors.orangeAccent, decoration: TextDecoration.lineThrough);
+    return const TextStyle(fontWeight: FontWeight.bold, fontSize: 16);
   }
 
   @override
   Widget build(BuildContext context) {
     final Box<GroceryItem> itemBox = Hive.box<GroceryItem>('items');
 
-    // Fallback if somehow accessed without a list ID
     if (widget.sessionId == null) {
-      return MainLayout(
-        title: 'Error',
-        repository: widget.repository,
-        child: const Center(child: Text('No list selected.')),
-      );
+      return MainLayout(title: 'Error', repository: widget.repository, child: const Center(child: Text('No list selected.')));
     }
 
     return MainLayout(
       title: 'Items',
       repository: widget.repository,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.auto_awesome_motion),
-          tooltip: 'Finish & Carry Over',
-          onPressed: () async {
-            // Logic to archive current list and move items to a new one
-            await widget.repository.carryOverToNewList(
-                widget.sessionId!,
-                "Carried Over List"
-            );
-            if (mounted) Navigator.pop(context); // Go back to List selection
-          },
-        ),
-      ],
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
         child: const Icon(Icons.add_shopping_cart),
@@ -121,13 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ValueListenableBuilder(
         valueListenable: itemBox.listenable(),
         builder: (context, Box<GroceryItem> box, _) {
-          // Use the new repository method to get items for this specific list
-          final items = widget.repository.getItemsForList(widget.sessionId!);
+          // Filter locally from the box
+          final items = box.values.where((i) => i.listId == widget.sessionId).toList();
+          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
           if (items.isEmpty) {
-            return const Center(
-              child: Text('No items found.', style: TextStyle(color: Colors.grey)),
-            );
+            return const Center(child: Text('No items found.', style: TextStyle(color: Colors.grey)));
           }
 
           return ListView.separated(
@@ -136,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = items[index];
-
               return ListTile(
                 leading: Checkbox(
                   value: item.status == ItemStatus.bought,
@@ -145,6 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       item,
                       val! ? ItemStatus.bought : ItemStatus.pending,
                     );
+                    if (mounted) {
+                      setState(() {});
+                    }
                   },
                 ),
                 title: Text(item.name, style: _getItemStyle(item.status)),

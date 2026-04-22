@@ -1,26 +1,194 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import '../models/group_list.dart';
 import '../models/item.dart';
 import '../models/group.dart';
 
 class SyncService {
-  static const String baseUrl = 'http://10.0.2.2:3000';
+
+  String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:3000';
+    } else if (Platform.isAndroid) {
+      return 'http://10.0.2.2:3000';
+    } else {
+      return 'http://localhost:3000';
+    }
+  }
+
+  // --- USER SYNC ---
+
+  Future<Map<String, String>> get _headers async {
+    final email = Hive.box<String>('metadata').get('userEmail');
+    return {
+      'Content-Type': 'application/json',
+      'x-user-email': email ?? '',
+      'x-device-id': 'your_device_id',
+    };
+  }
+
+// --- USER & INVITATION SYNC ---
+
+  Future<void> registerUser({
+    required String firstName,
+    required String lastName,
+    required String email,
+  }) async {
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/users/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'firstName': firstName,
+          'lastName': lastName,
+          'email': email,
+        }),
+      );
+    } catch (e) {
+      print('Register user error: $e');
+    }
+  }
+
+  Future<void> sendInvite(String groupId, String targetEmail) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/groups/$groupId/invite'),
+      headers: await _headers,
+      body: jsonEncode({'email': targetEmail}),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to send invitation: ${response.body}');
+    }
+  }
+
+  Future<List<dynamic>> fetchPendingInvites() async {
+    try {
+      print("test");
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/invitations'),
+        headers: await _headers,
+      );
+      if (response.statusCode == 200) {
+        print(response.body);
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print('Fetch invites error: $e');
+    }
+    return [];
+  }
+
+  Future<void> respondToInvite(String groupId, String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/groups/$groupId/invite/respond'),
+        headers: await _headers,
+        body: jsonEncode({'status': status}),
+      );
+      if (response.statusCode != 200) {
+        print('Invite response failed: ${response.body}');
+      }
+    } catch (e) {
+      print('Respond to invite error: $e');
+    }
+  }
 
   // --- GROUP SYNC ---
 
+  Future<List<GroceryGroup>> fetchGroupsFromServer() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/groups'),
+        headers: await _headers, // ADD THIS LINE
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => GroceryGroup(
+          id: json['id'],
+          name: json['name'],
+          isShared: true,
+        )).toList();
+      }
+    } catch (e) {
+      print('Failed to fetch groups: $e');
+    }
+    return [];
+  }
+
+  Future<List<GroceryItem>> fetchItemFromList(String id) async {
+    try {
+      final response = await http.get(
+          Uri.parse('$baseUrl/lists/$id/items'),
+          headers: await _headers
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => GroceryItem(
+          // Use ?? to provide defaults if the DB has nulls
+            name: json['name'] ?? 'Unknown Item',
+            status: ItemStatus.values.firstWhere(
+                    (e) => e.name == json['status'],
+                orElse: () => ItemStatus.pending
+            ),
+            // Check if createdAt exists before parsing
+            createdAt: json['createdAt'] != null
+                ? DateTime.parse(json['createdAt'])
+                : DateTime.now(),
+            listId: json['listId'] ?? id, // Fallback to the ID passed in
+            groupId: json['groupId'] ?? '' // Ensure this isn't null
+        )).toList();
+      }
+    } catch (e) {
+      print('Failed to fetch items: $e');
+    }
+    return [];
+  }
+
+  Future<List<GroceryList>> fetchListsFromServer(String groupId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/groups/$groupId/lists'),
+        headers: await _headers,
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => GroceryList(
+          id: json['id'],
+          name: json['name'],
+          groupId: json['GroupId'] ?? groupId,
+          createdAt: DateTime.parse(json['createdAt']),
+          isArchived: json['isArchived'] ?? false,
+        )).toList();
+      }
+    } catch (e) {
+      print('Failed to fetch lists: $e');
+    }
+    return [];
+  }
+
   Future<void> createGroupOnServer(GroceryGroup group) async {
     try {
-      await http.post(
+      // We use 'await _headers' to include the email for the ownership logic
+      final response = await http.post(
         Uri.parse('$baseUrl/groups'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: jsonEncode({
           'id': group.id,
           'name': group.name,
         }),
       );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        debugPrint('Group ${group.name} synced to server successfully.');
+      } else {
+        debugPrint('Failed to sync group. Status: ${response.statusCode}, Body: ${response.body}');
+      }
     } catch (e) {
-      print('Group sync error: $e');
+      debugPrint('Error creating group on server: $e');
     }
   }
 
