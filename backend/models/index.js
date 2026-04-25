@@ -7,6 +7,10 @@ const User = sequelize.define('User', {
     firstName: { type: DataTypes.STRING, allowNull: false },
     lastName: { type: DataTypes.STRING, allowNull: false },
     passwordHash: DataTypes.STRING,
+    deviceId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    }
 });
 
 const Group = sequelize.define('Group', {

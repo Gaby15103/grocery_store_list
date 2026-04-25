@@ -169,11 +169,14 @@ app.post('/sync-items', async (req, res) => {
 
 app.post('/users/register', async (req, res) => {
     try {
-        const { firstName, lastName, email } = req.body;
+        const { firstName, lastName, email, deviceId } = req.body;
         const [user, created] = await User.findOrCreate({
             where: { email },
-            defaults: { firstName, lastName }
+            defaults: { firstName, lastName, deviceId }
         });
+        if (!created && deviceId) {
+            await user.update({ deviceId });
+        }
         res.status(201).json(user);
     } catch (error) {
         res.status(500).send("Internal Server Error");
@@ -252,6 +255,63 @@ app.put('/groups/:groupId/invite/respond', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Update User Profile (First Name, Last Name, Email)
+app.put('/user/profile', async (req, res) => {
+    const { firstName, lastName, email } = req.body;
+    const currentEmail = req.headers['x-user-email'];
+
+    if (!currentEmail) return res.status(400).json({ error: "Missing current email header" });
+
+    try {
+        // 1. Check if the NEW email is already taken by someone else
+        if (email !== currentEmail) {
+            const existingUser = await User.findOne({ where: { email } });
+            if (existingUser) {
+                return res.status(409).json({ error: "Email already in use" });
+            }
+        }
+
+        // 2. Update the user
+        const [updatedRows] = await User.update(
+            { firstName, lastName, email },
+            { where: { email: currentEmail } }
+        );
+
+        if (updatedRows === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.status(200).json({ message: "Profile updated successfully" });
+    } catch (error) {
+        console.error("❌ Profile Update Error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/user/link', async (req, res) => {
+    const { currentDeviceId, targetSyncCode } = req.body;
+
+    try {
+        const targetUser = await User.findOne({ where: { deviceId: targetSyncCode } });
+
+        if (!targetUser) {
+            return res.status(404).json({ error: "Sync Code not found" });
+        }
+        res.status(200).json({
+            message: "Account linked",
+            user: {
+                email: targetUser.email,
+                firstName: targetUser.firstName,
+                lastName: targetUser.lastName
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 
 const PORT = process.env.PORT || 3000;
 // Use alter:true during dev on Arch to stay synced with Flutter model changes

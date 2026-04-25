@@ -36,6 +36,7 @@ class SyncService {
     required String firstName,
     required String lastName,
     required String email,
+    required String deviceId,
   }) async {
     try {
       await http.post(
@@ -45,10 +46,33 @@ class SyncService {
           'firstName': firstName,
           'lastName': lastName,
           'email': email,
+          'deviceId': deviceId,
         }),
       );
     } catch (e) {
       print('Register user error: $e');
+    }
+  }
+
+  Future<void> updateUserProfile({
+    required String firstName,
+    required String lastName,
+    required String email,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/profile'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+      }),
+    );
+
+    if (response.statusCode == 409) {
+      throw Exception("409: Email already in use");
+    } else if (response.statusCode != 200) {
+      throw Exception("Failed to update profile on server: ${response.body}");
     }
   }
 
@@ -93,6 +117,24 @@ class SyncService {
       }
     } catch (e) {
       print('Respond to invite error: $e');
+    }
+  }
+
+  Future<void> linkDevices({
+    required String currentDeviceId,
+    required String targetCode,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/link'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'currentDeviceId': currentDeviceId,
+        'targetSyncCode': targetCode,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to link devices: ${response.body}");
     }
   }
 

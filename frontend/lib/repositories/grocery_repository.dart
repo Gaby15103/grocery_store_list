@@ -66,6 +66,10 @@ class GroceryRepository {
     }
   }
 
+  String getSyncCode() {
+    return _metaBox.get('deviceId') ?? "Not Generated";
+  }
+
   // --- USER LOGIC ---
 
   Future<String> getUniqueDeviceId() async {
@@ -75,7 +79,11 @@ class GroceryRepository {
     var deviceInfo = DeviceInfoPlugin();
     String id = 'unknown';
 
-    if (Platform.isAndroid) {
+
+    if (Platform.isLinux) {
+      var linuxInfo = await deviceInfo.linuxInfo;
+      id = linuxInfo.machineId ?? 'linux_unknown';
+    } else if (Platform.isAndroid) {
       var androidInfo = await deviceInfo.androidInfo;
       id = androidInfo.id;
     } else if (Platform.isIOS) {
@@ -108,14 +116,46 @@ class GroceryRepository {
     final firstName = _metaBox.get('firstName');
     final lastName = _metaBox.get('lastName');
     final email = _metaBox.get('userEmail');
+    final deviceId = await getUniqueDeviceId();
 
     if (firstName != null && lastName != null && email != null) {
-      // We send them as separate fields or a combined name depending on your API
       await _syncService.registerUser(
           firstName: firstName,
           lastName: lastName,
-          email: email
+          email: email,
+          deviceId: deviceId
       );
+    }
+  }
+
+  Future<void> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String email
+  }) async {
+    await _syncService.updateUserProfile(
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+    );
+
+    await _metaBox.put('firstName', firstName);
+    await _metaBox.put('lastName', lastName);
+    await _metaBox.put('userEmail', email);
+
+    print("Profile updated successfully for $email");
+  }
+
+  /// Use this to link this device to an existing account using a Sync Code
+  Future<void> linkAccount(String targetSyncCode) async {
+    try {
+      final deviceId = await getUniqueDeviceId();
+      await _syncService.linkDevices(currentDeviceId: deviceId, targetCode: targetSyncCode);
+
+      await initialize();
+    } catch (e) {
+      print("Failed to link account: $e");
+      rethrow;
     }
   }
 

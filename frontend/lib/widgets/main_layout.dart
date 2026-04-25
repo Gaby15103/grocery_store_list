@@ -316,41 +316,6 @@ class MainLayout extends StatelessWidget {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: const Text('My Lists'),
-              selected: title == 'My Lists',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListSelectionScreen(
-                      repository: repository,
-                      groupId: activeGroupId,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Trip History'),
-              selected: title == 'Archived Lists',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SessionsScreen(
-                      repository: repository,
-                      groupId: activeGroupId,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
               leading: const Icon(Icons.mail_outline, color: Colors.orange),
               title: const Text('Invitations'),
               trailing: CircleAvatar(radius: 10, child: Text('1', style: TextStyle(fontSize: 12))),
