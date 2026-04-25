@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/group_list.dart';
 import '../models/item.dart';
 import '../models/group.dart';
+import '../utils.dart';
 
 class SyncService {
+
+  final Utils _utils = Utils();
 
   String get baseUrl {
     if (kIsWeb) {
@@ -26,7 +29,7 @@ class SyncService {
     return {
       'Content-Type': 'application/json',
       'x-user-email': email ?? '',
-      'x-device-id': 'your_device_id',
+      'x-device-id': await _utils.getUniqueDeviceId(),
     };
   }
 
@@ -141,13 +144,24 @@ class SyncService {
     }
   }
 
-  // --- GROUP SYNC ---
+  Future<List<String>> fetchRecentContacts() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/contacts'),
+      headers: await _headers,
+    );
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.map((u) => u['email'] as String).toList();
+    }
+    return [];
+  }
+
 
   Future<List<GroceryGroup>> fetchGroupsFromServer() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/groups'),
-        headers: await _headers, // ADD THIS LINE
+        headers: await _headers,
       );
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op} = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
@@ -52,4 +52,4 @@ Group.belongsToMany(User, { through: UserGroup });
 UserGroup.belongsTo(User);
 UserGroup.belongsTo(Group);
 
-module.exports = { Group, List, Item, User, UserGroup, sequelize };
+module.exports = { Group, List, Item, User, UserGroup, sequelize, Op };

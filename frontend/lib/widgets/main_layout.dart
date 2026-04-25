@@ -99,69 +99,144 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  void _showInvitationsDialog(BuildContext context, String activeGroupId) {
+  void _showReceivedInvitationsDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Group Invitations'),
+        title: const Text('Pending Invitations'),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Pending Invites", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              FutureBuilder<List<dynamic>>(
-                future: repository.getPendingInvitations(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Text("No new invitations", style: TextStyle(color: Colors.grey));
-                  }
-                  return Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        final invite = snapshot.data![index];
-                        return ListTile(
-                          title: Text(invite['GroupName']),
-                          subtitle: Text("From: ${invite['OwnerEmail']}"),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.check_circle, color: Colors.green),
-                            onPressed: () async {
-                              await repository.acceptInvitation(invite['groupId']);
-                              if (context.mounted) Navigator.pop(ctx);
-                            },
-                          ),
-                        );
+          child: FutureBuilder<List<dynamic>>(
+            future: repository.getPendingInvitations(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text("No new invitations", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  final invite = snapshot.data![index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(invite['GroupName']),
+                    subtitle: Text("From: ${invite['OwnerEmail']}"),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.check_circle, color: Colors.green),
+                      onPressed: () async {
+                        await repository.acceptInvitation(invite['groupId']);
+                        if (context.mounted) Navigator.pop(ctx);
                       },
                     ),
                   );
                 },
-              ),
-              const Divider(),
-              const Text("Send Invitation", style: TextStyle(fontWeight: FontWeight.bold)),
-              TextField(
-                decoration: const InputDecoration(hintText: "Enter friend's email"),
-                onSubmitted: (email, ) async {
-                  try {
-                    // Pass the active group ID as the second argument
-                    await repository.sendInvitation(email, activeGroupId);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      UIHelpers.showNotification("Invite sent to $email", isError: false);
-                    }
-                  } catch (e) {
-                    UIHelpers.showNotification("Failed to send invite: $e");
-                  }
-                },
-              ),
-            ],
+              );
+            },
           ),
         ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Close"))],
+      ),
+    );
+  }
+
+  void _showSendInvitationsDialog(BuildContext context, String activeGroupId) {
+    final List<String> selectedEmails = [];
+    String searchQuery = "";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Invite to Group'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Select Contacts", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    // Search Bar
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: "Search contacts...",
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) => setDialogState(() => searchQuery = val.toLowerCase()),
+                    ),
+                    const SizedBox(height: 10),
+                    // Contact List with Search
+                    FutureBuilder<List<String>>(
+                      future: repository.getRecentContacts(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const LinearProgressIndicator();
+
+                        final filtered = snapshot.data!.where((e) => e.toLowerCase().contains(searchQuery)).toList();
+
+                        return Container(
+                          height: 150,
+                          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                          child: filtered.isEmpty
+                              ? const Center(child: Text("No contacts found"))
+                              : ListView(
+                            children: filtered.map((email) {
+                              final isSelected = selectedEmails.contains(email);
+                              return CheckboxListTile(
+                                title: Text(email),
+                                value: isSelected,
+                                onChanged: (bool? val) {
+                                  setDialogState(() {
+                                    val! ? selectedEmails.add(email) : selectedEmails.remove(email);
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (selectedEmails.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 4,
+                        children: selectedEmails.map((e) => Chip(
+                          label: Text(e, style: const TextStyle(fontSize: 10)),
+                          onDeleted: () => setDialogState(() => selectedEmails.remove(e)),
+                        )).toList(),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: selectedEmails.isEmpty ? null : () async {
+                    try {
+                      for (String email in selectedEmails) {
+                        await repository.sendInvitation(email, activeGroupId);
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        UIHelpers.showNotification("Invitations sent!", isError: false);
+                      }
+                    } catch (e) {
+                      UIHelpers.showNotification("Failed to send: $e");
+                    }
+                  },
+                  child: Text("Invite (${selectedEmails.length})"),
+                ),
+              ],
+            );
+          }
       ),
     );
   }
@@ -195,7 +270,7 @@ class MainLayout extends StatelessWidget {
         ),
       );
     } else {
-      _showInvitationsDialog(context, activeGroupId);
+      _showSendInvitationsDialog(context, activeGroupId);
     }
   }
 
@@ -317,7 +392,7 @@ class MainLayout extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.mail_outline, color: Colors.orange),
-              title: const Text('Invitations'),
+              title: const Text('Received Invitations'),
               trailing: FutureBuilder<List<dynamic>>(
                 future: repository.getPendingInvitations(),
                 builder: (context, snapshot) {
@@ -343,7 +418,7 @@ class MainLayout extends StatelessWidget {
                   );
                 },
               ),
-              onTap: () => _showInvitationsDialog(context, activeGroupId),
+              onTap: () => _showReceivedInvitationsDialog(context),
             ),
             ListTile(
               leading: const Icon(Icons.sync),

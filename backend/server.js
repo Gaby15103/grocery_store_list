@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { sequelize, Group, List, Item, User, UserGroup } = require('./models');
+const { sequelize, Group, List, Item, User, UserGroup, Op } = require('./models');
 
 const app = express();
 const morgan = require('morgan');
@@ -308,6 +308,52 @@ app.post('/user/link', async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/users/contacts', async (req, res) => {
+    const email = req.headers['x-user-email'];
+    if (!email) return res.status(400).send("Email header missing");
+
+    try {
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.status(404).send("User not found");
+
+        // 1. Get all GroupIds where this user is a member
+        const myUserGroups = await UserGroup.findAll({
+            where: { UserId: user.id, status: 'accepted' },
+            attributes: ['GroupId'],
+            raw: true
+        });
+
+        const groupIds = myUserGroups.map(ug => ug.GroupId);
+        if (groupIds.length === 0) return res.json([]);
+
+        // 2. Find all OTHER UserIds in those same groups
+        const otherUserGroups = await UserGroup.findAll({
+            where: {
+                GroupId: groupIds,
+                status: 'accepted',
+                UserId: { [Op.ne]: user.id } // Exclude myself
+            },
+            attributes: ['UserId'],
+            raw: true
+        });
+
+        const otherUserIds = [...new Set(otherUserGroups.map(ug => ug.UserId))];
+        if (otherUserIds.length === 0) return res.json([]);
+
+        // 3. Fetch the actual User details for those IDs
+        const contacts = await User.findAll({
+            where: { id: otherUserIds },
+            attributes: ['email', 'firstName', 'lastName'],
+            raw: true
+        });
+
+        res.json(contacts);
+    } catch (err) {
+        console.error("❌ Contacts Fetch Error:", err);
+        res.status(500).json({ error: err.message });
     }
 });
 

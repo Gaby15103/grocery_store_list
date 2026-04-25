@@ -1,3 +1,4 @@
+import 'package:frontend/utils.dart';
 import 'package:hive/hive.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
@@ -13,6 +14,7 @@ class GroceryRepository {
   final Box<GroceryList> _listBox = Hive.box<GroceryList>('lists');
   final Box<String> _metaBox = Hive.box<String>('metadata');
   final SyncService _syncService = SyncService();
+  final Utils _utils = Utils();
 
   // --- HELPER LOGIC ---
 
@@ -68,29 +70,6 @@ class GroceryRepository {
 
   // --- USER LOGIC ---
 
-  Future<String> getUniqueDeviceId() async {
-    String? existingId = _metaBox.get('deviceId');
-    if (existingId != null) return existingId;
-
-    var deviceInfo = DeviceInfoPlugin();
-    String id = 'unknown';
-
-
-    if (Platform.isLinux) {
-      var linuxInfo = await deviceInfo.linuxInfo;
-      id = linuxInfo.machineId ?? 'linux_unknown';
-    } else if (Platform.isAndroid) {
-      var androidInfo = await deviceInfo.androidInfo;
-      id = androidInfo.id;
-    } else if (Platform.isIOS) {
-      var iosInfo = await deviceInfo.iosInfo;
-      id = iosInfo.identifierForVendor ?? 'ios_unknown';
-    }
-
-    await _metaBox.put('deviceId', id);
-    return id;
-  }
-
   /// Returns the email stored during setup, or null if first run
   String? getUserEmail() {
     return _metaBox.get('userEmail');
@@ -112,7 +91,7 @@ class GroceryRepository {
     final firstName = _metaBox.get('firstName');
     final lastName = _metaBox.get('lastName');
     final email = _metaBox.get('userEmail');
-    final deviceId = await getUniqueDeviceId();
+    final deviceId = await _utils.getUniqueDeviceId();
 
     if (firstName != null && lastName != null && email != null) {
       await _syncService.registerUser(
@@ -145,7 +124,7 @@ class GroceryRepository {
   /// Use this to link this device to an existing account using a Sync Code
   Future<void> linkAccount(String targetSyncCode) async {
     try {
-      final deviceId = await getUniqueDeviceId();
+      final deviceId = await _utils.getUniqueDeviceId();
       final userData = await _syncService.linkDevices(
           currentDeviceId: deviceId,
           targetCode: targetSyncCode
@@ -160,6 +139,10 @@ class GroceryRepository {
       print("Failed to link account: $e");
       rethrow;
     }
+  }
+
+  Future<List<String>> getRecentContacts() async {
+    return await _syncService.fetchRecentContacts();
   }
 
   // --- INVITATION LOGIC ---
