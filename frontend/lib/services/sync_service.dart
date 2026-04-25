@@ -120,7 +120,7 @@ class SyncService {
     }
   }
 
-  Future<void> linkDevices({
+  Future<Map<String, dynamic>> linkDevices({
     required String currentDeviceId,
     required String targetCode,
   }) async {
@@ -133,7 +133,10 @@ class SyncService {
       }),
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['user'];
+    } else {
       throw Exception("Failed to link devices: ${response.body}");
     }
   }

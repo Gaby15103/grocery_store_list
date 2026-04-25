@@ -54,10 +54,6 @@ class GroceryRepository {
       await Hive.box<String>('metadata').clear();
 
       // 2. Actually delete the files if you want a 100% clean slate
-      await Hive.deleteBoxFromDisk('items');
-      await Hive.deleteBoxFromDisk('groups');
-      await Hive.deleteBoxFromDisk('lists');
-      await Hive.deleteBoxFromDisk('metadata');
 
       print("Hive cache cleared successfully.");
     } catch (e) {
@@ -150,7 +146,14 @@ class GroceryRepository {
   Future<void> linkAccount(String targetSyncCode) async {
     try {
       final deviceId = await getUniqueDeviceId();
-      await _syncService.linkDevices(currentDeviceId: deviceId, targetCode: targetSyncCode);
+      final userData = await _syncService.linkDevices(
+          currentDeviceId: deviceId,
+          targetCode: targetSyncCode
+      );
+
+      await _metaBox.put('userEmail', userData['email']);
+      await _metaBox.put('firstName', userData['firstName']);
+      await _metaBox.put('lastName', userData['lastName']);
 
       await initialize();
     } catch (e) {

@@ -318,7 +318,31 @@ class MainLayout extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.mail_outline, color: Colors.orange),
               title: const Text('Invitations'),
-              trailing: CircleAvatar(radius: 10, child: Text('1', style: TextStyle(fontSize: 12))),
+              trailing: FutureBuilder<List<dynamic>>(
+                future: repository.getPendingInvitations(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting ||
+                      !snapshot.hasData ||
+                      snapshot.data!.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final count = snapshot.data!.length;
+
+                  return CircleAvatar(
+                    radius: 11,
+                    backgroundColor: Colors.red,
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold
+                      ),
+                    ),
+                  );
+                },
+              ),
               onTap: () => _showInvitationsDialog(context, activeGroupId),
             ),
             ListTile(
