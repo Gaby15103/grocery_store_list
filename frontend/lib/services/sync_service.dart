@@ -63,7 +63,7 @@ class SyncService {
     required String email,
   }) async {
     final response = await http.put(
-      Uri.parse('$baseUrl/user/profile'),
+      Uri.parse('$baseUrl/users/profile'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'firstName': firstName,
@@ -128,7 +128,7 @@ class SyncService {
     required String targetCode,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/user/link'),
+      Uri.parse('$baseUrl/users/link'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'currentDeviceId': currentDeviceId,
@@ -294,6 +294,7 @@ class SyncService {
           'name': item.name,
           'status': item.status.name,
           'listId': item.listId,
+          'groupId': item.groupId,
           'createdAt': item.createdAt.toIso8601String(),
         }),
       );

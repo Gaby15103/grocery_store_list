@@ -147,6 +147,7 @@ class MainLayout extends StatelessWidget {
 
   void _showSendInvitationsDialog(BuildContext context, String activeGroupId) {
     final List<String> selectedEmails = [];
+    final TextEditingController manualEmailController = TextEditingController(); // New
     String searchQuery = "";
 
     showDialog(
@@ -161,36 +162,76 @@ class MainLayout extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Select Contacts", style: TextStyle(fontWeight: FontWeight.bold)),
+                    // --- NEW: Manual Email Input ---
+                    const Text("Invite by Email", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: manualEmailController,
+                            decoration: const InputDecoration(
+                              hintText: "Enter email address...",
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            onSubmitted: (val) {
+                              if (val.contains('@')) {
+                                setDialogState(() {
+                                  if (!selectedEmails.contains(val)) selectedEmails.add(val);
+                                  manualEmailController.clear();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle, color: Colors.blue),
+                          onPressed: () {
+                            final val = manualEmailController.text.trim();
+                            if (val.contains('@')) {
+                              setDialogState(() {
+                                if (!selectedEmails.contains(val)) selectedEmails.add(val);
+                                manualEmailController.clear();
+                              });
+                            }
+                          },
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- Existing Search/Recent Contacts ---
+                    const Text("Recent Contacts", style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
-                    // Search Bar
                     TextField(
                       decoration: const InputDecoration(
-                        hintText: "Search contacts...",
+                        hintText: "Search recent...",
                         prefixIcon: Icon(Icons.search),
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (val) => setDialogState(() => searchQuery = val.toLowerCase()),
                     ),
                     const SizedBox(height: 10),
-                    // Contact List with Search
                     FutureBuilder<List<String>>(
                       future: repository.getRecentContacts(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const LinearProgressIndicator();
-
                         final filtered = snapshot.data!.where((e) => e.toLowerCase().contains(searchQuery)).toList();
 
                         return Container(
-                          height: 150,
-                          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                          height: 120, // Slightly shorter to make room
+                          decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8)
+                          ),
                           child: filtered.isEmpty
-                              ? const Center(child: Text("No contacts found"))
+                              ? const Center(child: Text("No recent contacts found"))
                               : ListView(
                             children: filtered.map((email) {
                               final isSelected = selectedEmails.contains(email);
                               return CheckboxListTile(
-                                title: Text(email),
+                                title: Text(email, style: const TextStyle(fontSize: 14)),
                                 value: isSelected,
                                 onChanged: (bool? val) {
                                   setDialogState(() {

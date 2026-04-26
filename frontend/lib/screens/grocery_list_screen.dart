@@ -1,29 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 import '../models/item.dart';
 import '../repositories/grocery_repository.dart';
+import '../services/SocketService.dart';
 import '../widgets/main_layout.dart';
 
-class HomeScreen extends StatefulWidget {
+class GroceryListScreen extends StatefulWidget {
   final GroceryRepository repository;
   final String? sessionId;
 
-  const HomeScreen({super.key, required this.repository, this.sessionId});
+  const GroceryListScreen({super.key, required this.repository, this.sessionId});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<GroceryListScreen> createState() => _GroceryListScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _GroceryListScreenState extends State<GroceryListScreen> {
   final TextEditingController _controller = TextEditingController();
+  late SocketService _socketService;
 
   @override
   void initState() {
     super.initState();
-    // Fill the Hive box from the server as soon as we land on the screen
+    _socketService = SocketService(widget.repository);
+
     if (widget.sessionId != null) {
       widget.repository.getItemsForList(widget.sessionId!);
+
+      final email = widget.repository.getUserEmail() ?? 'guest';
+      _socketService.connect(email);
+
+      _socketService.socket.onConnect((_) {
+        final activeGroupId = widget.repository.getActiveGroupId();
+        _socketService.joinGroup(activeGroupId);
+      });
+
+      _setupSocketListeners();
     }
+  }
+
+  void _setupSocketListeners() {
+    _socketService.socket.on('item_added', (data) {
+      widget.repository.handleSocketItemAdded(data);
+    });
+
+    _socketService.socket.on('item_updated', (data) {
+      widget.repository.handleSocketItemUpdated(data);
+    });
+
+    _socketService.socket.on('list_synced', (_) {
+      widget.repository.getItemsForList(widget.sessionId!);
+    });
+  }
+
+  @override
+  void dispose() {
+    _socketService.dispose();
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _handleSave() async {

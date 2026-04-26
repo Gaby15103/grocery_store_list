@@ -37,4 +37,22 @@ class GroceryItem extends HiveObject {
     this.addedBy,
     this.modifiedBy,
   });
+
+  factory GroceryItem.fromJson(Map<String, dynamic> json) {
+    return GroceryItem(
+      name: json['name'],
+      listId: json['ListId'] ?? json['listId'],
+      groupId: json['groupId'] ?? '',
+      status: _statusFromString(json['status']),
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+
+  static ItemStatus _statusFromString(String status) {
+    switch (status) {
+      case 'bought': return ItemStatus.bought;
+      case 'discarded': return ItemStatus.discarded;
+      default: return ItemStatus.pending;
+    }
+  }
 }

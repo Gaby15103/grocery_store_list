@@ -3,7 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_list.dart';
 import '../repositories/grocery_repository.dart';
 import '../widgets/main_layout.dart';
-import 'home_screen.dart';
+import 'grocery_list_screen.dart';
 
 class ListSelectionScreen extends StatelessWidget {
   final GroceryRepository repository;
@@ -102,7 +102,7 @@ class ListSelectionScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => HomeScreen(
+                        builder: (context) => GroceryListScreen(
                           repository: repository,
                           sessionId: groceryList.id,
                         ),

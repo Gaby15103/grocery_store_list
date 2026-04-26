@@ -68,6 +68,49 @@ class GroceryRepository {
     return _metaBox.get('deviceId') ?? "Not Generated";
   }
 
+  // --- SOCKET SYNC LOGIC ---
+
+  /// Called when the socket receives 'item_added'
+  Future<void> handleSocketItemAdded(Map<String, dynamic> data) async {
+    try {
+      final newItem = GroceryItem.fromJson(data);
+      // Writing to the box triggers ValueListenableBuilder in the UI
+      await _itemBox.put('${newItem.listId}_${newItem.name}', newItem);
+    } catch (e) {
+      print("❌ Error handling socket item add: $e");
+    }
+  }
+
+  /// Called when the socket receives 'item_updated'
+  Future<void> handleSocketItemUpdated(Map<String, dynamic> data) async {
+    final String name = data['name'];
+    final String listId = data['listId'];
+    final String statusStr = data['status'];
+
+    final key = '${listId}_$name';
+    final item = _itemBox.get(key);
+
+    if (item != null) {
+      item.status = _statusFromSocketString(statusStr);
+
+      await _itemBox.put(key, item);
+    }
+  }
+
+  /// Helper to map socket strings to your Enum
+  ItemStatus _statusFromSocketString(String status) {
+    return ItemStatus.values.firstWhere(
+            (e) => e.name == status,
+        orElse: () => ItemStatus.pending
+    );
+  }
+
+  /// Helper for the Socket Service to know which room to join
+  String? getActiveGroupIdForSocket() {
+    final id = getActiveGroupId();
+    return id == 'default' ? null : id;
+  }
+
   // --- USER LOGIC ---
 
   /// Returns the email stored during setup, or null if first run
