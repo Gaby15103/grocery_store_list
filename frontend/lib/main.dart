@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:frontend/screens/grocery_list_screen.dart';
 import 'package:frontend/screens/list_selection_screen.dart';
 import 'package:frontend/screens/setup_screen.dart';
 import 'package:frontend/screens/settings_screen.dart';
@@ -7,19 +9,27 @@ import 'models/group_list.dart';
 import 'models/item.dart';
 import 'models/group.dart';
 import 'repositories/grocery_repository.dart';
+import 'services/socket_service.dart'; // Import your new service
+import 'services/notification_service.dart'; // Import the notification service
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  await dotenv.load();
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load();
+  await NotificationService.init();
+
   await Hive.initFlutter();
+
 
   Hive.registerAdapter(ItemStatusAdapter());
   Hive.registerAdapter(GroceryItemAdapter());
   Hive.registerAdapter(GroceryGroupAdapter());
   Hive.registerAdapter(GroceryListAdapter());
+
 
   await Future.wait([
     Hive.openBox<GroceryGroup>('groups'),
@@ -31,57 +41,152 @@ void main() async {
   final repository = GroceryRepository();
   await repository.initialize();
 
-  runApp(GroceryApp(repository: repository));
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'grocery_sync_service',
+      channelName: 'Grocery Master Sync',
+      channelDescription: 'Maintains connection for real-time updates.',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+    ),
+    iosNotificationOptions: const IOSNotificationOptions(),
+    foregroundTaskOptions: const ForegroundTaskOptions(
+      interval: 5000,
+      isOnceEvent: false,
+      autoRunOnBoot: true,
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ),
+  );
+
+  // --- FIX: Correct Permission Check (v6+) ---
+  NotificationPermission notificationPermission =
+  await FlutterForegroundTask.checkNotificationPermission();
+  if (notificationPermission != NotificationPermission.granted) {
+    await FlutterForegroundTask.requestNotificationPermission();
+  }
+
+  final socketService = SocketService(repository);
+
+  runApp(GroceryApp(
+    repository: repository,
+    socketService: socketService,
+  ));
 }
 
 class GroceryApp extends StatefulWidget {
   final GroceryRepository repository;
-  const GroceryApp({super.key, required this.repository});
+  final SocketService socketService;
+
+  const GroceryApp({
+    super.key,
+    required this.repository,
+    required this.socketService,
+  });
 
   @override
   State<GroceryApp> createState() => _GroceryAppState();
 }
 
 class _GroceryAppState extends State<GroceryApp> {
+  bool _isSocketInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupGlobalListeners();
+    _setupNotificationTapHandler();
+  }
+
+  void _setupNotificationTapHandler() {
+    NotificationService.selectNotificationStream.stream.listen((String? listId) {
+      if (listId != null) {
+        _navigateToSpecificList(listId);
+      }
+    });
+  }
+
+  void _navigateToSpecificList(String listId) {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => GroceryListScreen(
+          repository: widget.repository,
+          sessionId: listId,
+        ),
+      ),
+          (route) => route.isFirst,
+    );
+  }
+
+  Future<void> _startForegroundTask() async {
+    if (await FlutterForegroundTask.isRunningService) return;
+
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'Grocery Master',
+      notificationText: 'Sync service is active in background',
+    );
+  }
+
+  void _setupGlobalListeners() {
+    widget.repository.initSocketListener(widget.socketService.eventStream);
+
+    _startForegroundTask();
+
+    widget.socketService.eventStream.listen((event) {
+      final String? incomingListId = event.data['listId'] ?? event.data['ListId'];
+      final String? activeListId = widget.repository.currentOpenedListId;
+
+      if (incomingListId != null && incomingListId == activeListId) {
+        print("🔇 Muting notification: User is already looking at list $incomingListId");
+        return;
+      }
+
+      if (event.type == 'item_added') {
+        NotificationService.showPhoneNotification(
+          id: 1,
+          title: 'New Item!',
+          body: '${event.data['name']} was added to a list.',
+          payload: incomingListId,
+        );
+      } else if (event.type == 'item_updated' && event.data['status'] == 'bought') {
+        NotificationService.showPhoneNotification(
+          id: 2,
+          title: 'Item Purchased',
+          body: 'Someone bought ${event.data['name']}!',
+          payload: incomingListId,
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // We listen to the 'metadata' box for theme or profile changes
     return ValueListenableBuilder(
       valueListenable: Hive.box<String>('metadata').listenable(),
       builder: (context, Box<String> box, _) {
         final String? userEmail = box.get('userEmail');
 
-        // 1. Get Theme Mode (System, Light, Dark)
-        final String themeModePref = box.get('themeMode') ?? 'system';
-        ThemeMode currentThemeMode = ThemeMode.system;
-        if (themeModePref == 'light') currentThemeMode = ThemeMode.light;
-        if (themeModePref == 'dark') currentThemeMode = ThemeMode.dark;
+        if (userEmail != null && !_isSocketInitialized) {
+          widget.socketService.connect(userEmail);
+          _isSocketInitialized = true;
+        }
 
-        // 2. Get Color Seed (Saved as String of hex or integer in Settings)
-        // Default to Green if not set
+        final String themeModePref = box.get('themeMode') ?? 'system';
+        ThemeMode currentThemeMode = themeModePref == 'dark'
+            ? ThemeMode.dark
+            : themeModePref == 'light' ? ThemeMode.light : ThemeMode.system;
+
         final String? colorSeedHex = box.get('colorSeed');
-        final Color seedColor = colorSeedHex != null
-            ? Color(int.parse(colorSeedHex))
-            : Colors.green;
+        final Color seedColor = colorSeedHex != null ? Color(int.parse(colorSeedHex)) : Colors.green;
 
         return MaterialApp(
+          navigatorKey: navigatorKey,
           scaffoldMessengerKey: scaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
           title: 'Grocery Master',
-
-          // Theme Logic
           themeMode: currentThemeMode,
-          theme: ThemeData(
-            colorSchemeSeed: seedColor,
-            useMaterial3: true,
-            brightness: Brightness.light,
-          ),
-          darkTheme: ThemeData(
-            colorSchemeSeed: seedColor,
-            useMaterial3: true,
-            brightness: Brightness.dark,
-          ),
-
+          theme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.light),
+          darkTheme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.dark),
           home: userEmail == null
               ? SetupScreen(
             repository: widget.repository,

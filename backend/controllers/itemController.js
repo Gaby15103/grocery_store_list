@@ -1,4 +1,4 @@
-const { List, Item, sequelize } = require('../models');
+const { List, Item, sequelize, User} = require('../models');
 
 exports.createList = async (req, res) => {
     const { id, name, GroupId, createdAt } = req.body;
@@ -29,6 +29,14 @@ exports.createItem = async (req, res) => {
                 ...item.toJSON(),
                 listId: item.ListId
             });
+            let user = await User.findOne({ email: req.headers['x-user-email'] });
+            req.io.to(groupId).emit('notification', {
+                type: 'item_added',
+                listId: listId,
+                title: 'New Item Added ➕',
+                message: `${user.firstName || 'Someone'} added ${name} to the list.`,
+                data: { name, listId }
+            });
         }
         res.status(201).json(item);
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -39,6 +47,14 @@ exports.deleteItem = async (req, res) => {
         await Item.destroy({ where: { name, ListId: listId } });
         if (groupId) {
             req.io.to(groupId).emit('item_deleted', { name, listId });
+            let user = await User.findOne({ email: req.headers['x-user-email'] });
+            req.io.to(groupId).emit('notification', {
+                type: 'item_deleted',
+                listId: listId,
+                title: 'New Item Deleted',
+                message: `${user.firstName || 'Someone'} deleted ${name} from the list.`,
+                data: { name, listId }
+            });
         }
         res.status(200).json({ message: "Deleted" });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -58,6 +74,16 @@ exports.updateItem = async (req, res) => {
                 listId: listId,
                 status: status
             });
+            if (status === 'bought') {
+                let user = await User.findOne({ email: req.headers['x-user-email'] });
+                req.io.to(groupId).emit('notification', {
+                    type: 'item_updated',
+                    listId: listId,
+                    title: 'Item Purchased 🛒',
+                    message: `${user.firstName || 'Someone'} just bought ${name}!`,
+                    data: { name, listId }
+                });
+            }
         }
         res.status(200).json({ message: "Updated" });
     } catch (e) { res.status(500).json({ error: e.message }); }

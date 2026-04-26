@@ -5,6 +5,7 @@ import 'dart:io';
 import '../models/group_list.dart';
 import '../models/item.dart';
 import '../models/group.dart';
+import '../services/socket_service.dart';
 import '../services/sync_service.dart';
 import '../utils/ui_helpers.dart';
 
@@ -15,6 +16,25 @@ class GroceryRepository {
   final Box<String> _metaBox = Hive.box<String>('metadata');
   final SyncService _syncService = SyncService();
   final Utils _utils = Utils();
+
+  void initSocketListener(Stream<SocketEvent> eventStream) {
+    eventStream.listen((event) {
+      switch (event.type) {
+        case 'item_added':
+          handleSocketItemAdded(event.data);
+          break;
+        case 'item_updated':
+          handleSocketItemUpdated(event.data);
+          break;
+        case 'item_deleted':
+          handleSocketItemDeleted(event.data);
+          break;
+        case 'force_refresh':
+          initialize();
+          break;
+      }
+    });
+  }
 
   // --- HELPER LOGIC ---
 
@@ -68,6 +88,19 @@ class GroceryRepository {
     return _metaBox.get('deviceId') ?? "Not Generated";
   }
 
+  /// Helper for the Socket Service to know which room to join
+  String? getActiveGroupIdForSocket() {
+    final id = getActiveGroupId();
+    return id == 'default' ? null : id;
+  }
+
+  String? currentOpenedListId;
+
+  void setCurrentlyViewedList(String? listId) {
+    currentOpenedListId = listId;
+    print("📍 User is now viewing list: $listId");
+  }
+
   // --- SOCKET SYNC LOGIC ---
 
   /// Called when the socket receives 'item_added'
@@ -110,11 +143,6 @@ class GroceryRepository {
     );
   }
 
-  /// Helper for the Socket Service to know which room to join
-  String? getActiveGroupIdForSocket() {
-    final id = getActiveGroupId();
-    return id == 'default' ? null : id;
-  }
 
   // --- USER LOGIC ---
 
