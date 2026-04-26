@@ -303,7 +303,7 @@ class SyncService {
     }
   }
 
-  Future<void> updateItemOnServer(GroceryItem item) async {
+  Future<void> updateItemOnServer(GroceryItem item, String groupId) async {
     try {
       // Assuming your backend uses the combination of name and listId to find the item
       // or you've added a unique ID to the Item model.
@@ -314,6 +314,7 @@ class SyncService {
           'name': item.name,
           'listId': item.listId,
           'status': item.status.name,
+          'groupId': groupId,
         }),
       );
     } catch (e) {
@@ -321,7 +322,7 @@ class SyncService {
     }
   }
 
-  Future<void> deleteItemOnServer(String name, String listId) async {
+  Future<void> deleteItemOnServer(String name, String listId, String groupId) async {
     try {
       await http.delete(
         Uri.parse('$baseUrl/items'),
@@ -329,6 +330,7 @@ class SyncService {
         body: jsonEncode({
           'name': name,
           'listId': listId,
+          'groupId': groupId
         }),
       );
     } catch (e) {

@@ -83,6 +83,7 @@ class GroceryRepository {
 
   /// Called when the socket receives 'item_updated'
   Future<void> handleSocketItemUpdated(Map<String, dynamic> data) async {
+    print('item updated');
     final String name = data['name'];
     final String listId = data['listId'];
     final String statusStr = data['status'];
@@ -95,6 +96,10 @@ class GroceryRepository {
 
       await _itemBox.put(key, item);
     }
+  }
+
+  void handleSocketItemDeleted(Map<String, dynamic> data) {
+    _itemBox.delete('${data['listId']}_${data['name']}');
   }
 
   /// Helper to map socket strings to your Enum
@@ -340,12 +345,14 @@ class GroceryRepository {
 
     if (_shouldSync()) {
       // Update the record in Postgres
-      await _syncService.updateItemOnServer(item);
+      await _syncService.updateItemOnServer(item, getActiveGroupId());
     } else {
       // Update the record in Hive
       await item.save();
     }
   }
+
+
 
   // --- CARRY OVER / ARCHIVE LOGIC ---
 
@@ -381,7 +388,7 @@ class GroceryRepository {
 
   Future<void> deleteItem(GroceryItem item) async {
     if (_shouldSync()) {
-      await _syncService.deleteItemOnServer(item.name, item.listId);
+      await _syncService.deleteItemOnServer(item.name, item.listId, getActiveGroupId());
     } else {
       await item.delete();
     }

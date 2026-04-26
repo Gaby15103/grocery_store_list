@@ -3,6 +3,7 @@ const router = express.Router();
 const itemCtrl = require('../controllers/itemController');
 
 router.post('/', itemCtrl.createItem);
+router.delete('/', itemCtrl.deleteItem);
 router.put('/update', itemCtrl.updateItem);
 router.post('/sync', itemCtrl.syncItems);
 module.exports = router;

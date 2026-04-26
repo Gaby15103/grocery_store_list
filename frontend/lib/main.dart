@@ -7,10 +7,12 @@ import 'models/group_list.dart';
 import 'models/item.dart';
 import 'models/group.dart';
 import 'repositories/grocery_repository.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
+  await dotenv.load();
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 

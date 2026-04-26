@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../repositories/grocery_repository.dart';
@@ -13,11 +14,11 @@ class SocketService {
 
   String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:3000';
+      return dotenv.env['API_URL'] ?? 'http://localhost:3000';
     } else if (Platform.isAndroid) {
       return 'http://10.0.2.2:3000';
     } else {
-      return 'http://localhost:3000';
+      return dotenv.env['API_URL'] ?? 'http://localhost:3000';
     }
   }
 
@@ -30,9 +31,11 @@ class SocketService {
     });
 
     socket.connect();
+    socket.on('force_refresh', (_) => repository.initialize());
 
     socket.on('item_added', (data) => repository.handleSocketItemAdded(data));
     socket.on('item_updated', (data) => repository.handleSocketItemUpdated(data));
+    socket.on('item_deleted', (data) => repository.handleSocketItemDeleted(data));
 
     socket.onConnect((_) {
       print('✅ Connected to WebSocket');

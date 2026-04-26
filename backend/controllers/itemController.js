@@ -33,14 +33,33 @@ exports.createItem = async (req, res) => {
         res.status(201).json(item);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
+exports.deleteItem = async (req, res) => {
+    const { name, listId, groupId } = req.body;
+    try {
+        await Item.destroy({ where: { name, ListId: listId } });
+        if (groupId) {
+            req.io.to(groupId).emit('item_deleted', { name, listId });
+        }
+        res.status(200).json({ message: "Deleted" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
 
 exports.updateItem = async (req, res) => {
     const { name, listId, status, groupId } = req.body;
     try {
-        const [updatedRows] = await Item.update({ status }, { where: { name, ListId: listId } });
-        if (updatedRows === 0) return res.status(404).json({ error: "Item not found" });
-        if (groupId) req.io.to(groupId).emit('item_updated', { name, status, listId });
-        res.status(200).json({ message: "Status updated" });
+        const [updatedRows] = await Item.update(
+            { status },
+            { where: { name, ListId: listId } }
+        );
+
+        if (updatedRows > 0 && groupId) {
+            req.io.to(groupId).emit('item_updated', {
+                name: name,
+                listId: listId,
+                status: status
+            });
+        }
+        res.status(200).json({ message: "Updated" });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
