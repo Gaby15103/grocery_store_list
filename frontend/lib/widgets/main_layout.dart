@@ -99,7 +99,7 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  void _showReceivedInvitationsDialog(BuildContext context) {
+  void showReceivedInvitationsDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -324,7 +324,7 @@ class MainLayout extends StatelessWidget {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(activeGroup.name ?? title),
+          title: Text(activeGroup.id.isNotEmpty ? activeGroup.name : title),
         leading: Navigator.canPop(context)
             ? IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -366,6 +366,15 @@ class MainLayout extends StatelessWidget {
                 ],
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+                title: const Text('Dashboard'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              },
+            ),
+            const Divider(),
             // Dynamic Group Selection
             const ListTile(
               leading: Icon(Icons.group_work),
@@ -465,7 +474,7 @@ class MainLayout extends StatelessWidget {
                   );
                 },
               ),
-              onTap: () => _showReceivedInvitationsDialog(context),
+              onTap: () => showReceivedInvitationsDialog(context),
             ),
             ListTile(
               leading: const Icon(Icons.sync),

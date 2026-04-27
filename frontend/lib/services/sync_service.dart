@@ -74,7 +74,7 @@ class SyncService {
 
   Future<Map<String, dynamic>> getCurrentUser() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/me'),
+      Uri.parse('$baseUrl/users/me'),
       headers: await _headers,
     );
 

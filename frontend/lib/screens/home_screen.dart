@@ -1,15 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/user.dart';
 import '../widgets/main_layout.dart';
 import '../repositories/grocery_repository.dart';
 import '../models/group.dart';
-import '../screens/grocery_list_screen.dart';
+import '../utils/ui_helpers.dart';
+import 'list_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final GroceryRepository repository;
 
   const HomeScreen({super.key, required this.repository});
+
+  // Helper to open your recipe website
+  Future<void> _launchRecipeSite() async {
+    final Uri url = Uri.parse('https://recipes.gaby15103.org/recipes');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      UIHelpers.showNotification("Could not launch recipe site");
+    }
+  }
+
+  // Reuse the logic from MainLayout to show invitations
+  void _showInvitations(BuildContext context) {
+    if (repository.getUserEmail() == null) {
+      UIHelpers.showNotification("Please link an account to see invitations");
+      return;
+    }
+    MainLayout(
+      repository: repository,
+      title: "Invitations",
+      child: const SizedBox(),
+    ).showReceivedInvitationsDialog(context);
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -18,19 +43,16 @@ class HomeScreen extends StatelessWidget {
       repository: repository,
       child: CustomScrollView(
         slivers: [
-          // 1. Welcome Header
+          // Welcome Header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: FutureBuilder<User>(
                 future: repository.getCurrentUser(),
                 builder: (context, snapshot) {
-                  String displayName = "Chef";
-
-                  if (snapshot.hasData) {
-                    final user = snapshot.data!;
-                    displayName = "${user.firstName} ${user.lastName}";
-                  }
+                  String displayName = snapshot.hasData
+                      ? "${snapshot.data!.firstName} ${snapshot.data!.lastName}"
+                      : "Chef";
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,10 +63,7 @@ class HomeScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (snapshot.connectionState == ConnectionState.waiting)
-                        const SizedBox(height: 4, child: LinearProgressIndicator(minHeight: 2))
-                      else
-                        const Text("Here is what's happening in your kitchen."),
+                      const Text("Here is what's happening in your kitchen."),
                     ],
                   );
                 },
@@ -52,7 +71,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // 2. Recent Lists (Horizontal Carousel)
+          // Recent Groups Carousel
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -70,17 +89,14 @@ class HomeScreen extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     itemCount: groups.length,
-                    itemBuilder: (context, index) {
-                      final group = groups[index];
-                      return _buildRecentCard(context, group);
-                    },
+                    itemBuilder: (context, index) => _buildRecentCard(context, groups[index]),
                   );
                 },
               ),
             ),
           ),
 
-          // 3. System Status (Server vs Local)
+          // System Status
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           SliverToBoxAdapter(
             child: Padding(
@@ -89,7 +105,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // 4. Quick Actions / Categories
+          // Functional Quick Actions
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
@@ -104,10 +120,8 @@ class HomeScreen extends StatelessWidget {
               crossAxisSpacing: 12,
               childAspectRatio: 1.5,
               children: [
-                _buildActionCard(context, "All Recipes", Icons.menu_book, Colors.orange, () {}),
-                _buildActionCard(context, "Shopping", Icons.shopping_bag, Colors.green, () {}),
-                _buildActionCard(context, "Invitations", Icons.mail, Colors.blue, () {}),
-                _buildActionCard(context, "Sync Logs", Icons.terminal, Colors.grey, () {}),
+                _buildActionCard(context, "Family Recipes", Icons.menu_book, Colors.orange, _launchRecipeSite),
+                _buildActionCard(context, "Invitations", Icons.mail, Colors.blue, () => _showInvitations(context)),
               ],
             ),
           ),
@@ -116,6 +130,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // --- THE MISSING METHODS ---
+
   Widget _buildRecentCard(BuildContext context, GroceryGroup group) {
     return Card(
       elevation: 2,
@@ -123,7 +139,14 @@ class HomeScreen extends StatelessWidget {
       child: InkWell(
         onTap: () async {
           await repository.setActiveGroup(group.id);
-          // Navigate to your list selection or specific list
+          if (context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ListSelectionScreen(repository: repository, groupId: group.id),
+              ),
+            );
+          }
         },
         child: Container(
           width: 140,
@@ -135,7 +158,7 @@ class HomeScreen extends StatelessWidget {
               Icon(group.isShared ? Icons.cloud : Icons.home,
                   color: group.isShared ? Colors.blue : Colors.green, size: 20),
               Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const Text("Last updated: 2h", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              const Text("Active Group", style: TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ),
@@ -144,7 +167,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildStatusBanner(BuildContext context) {
-    bool isOnline = repository.getUserEmail() != null;
+    final bool isOnline = repository.getUserEmail() != null;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -161,7 +184,7 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(isOnline ? "Server Connected" : "Local Mode", style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(isOnline ? "Syncing to gab-server" : "Changes saved locally in Hive", style: const TextStyle(fontSize: 12)),
+                Text(isOnline ? "Syncing to gab-server" : "Sync disabled - No account", style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
