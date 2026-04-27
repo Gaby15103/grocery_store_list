@@ -3,10 +3,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/item.dart';
 import '../repositories/grocery_repository.dart';
 import '../widgets/main_layout.dart';
+import '../utils/l10n.dart'; // Import localization tool
 
 class GroceryListScreen extends StatefulWidget {
   final GroceryRepository repository;
-  final String? sessionId; // This is your listId
+  final String? sessionId;
 
   const GroceryListScreen({super.key, required this.repository, this.sessionId});
 
@@ -20,24 +21,18 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   @override
   void initState() {
     super.initState();
-    // CRITICAL: Tell the repository which list we are looking at.
-    // This allows main.dart to "mute" phone notifications for this list.
     if (widget.sessionId != null) {
       widget.repository.setCurrentlyViewedList(widget.sessionId!);
-      // Initial fetch from backend
       widget.repository.getItemsForList(widget.sessionId!);
     }
   }
 
   @override
   void dispose() {
-    // CRITICAL: Clear the view context so notifications resume when we leave.
     widget.repository.setCurrentlyViewedList(null);
     _controller.dispose();
     super.dispose();
   }
-
-  // --- LOGIC ---
 
   Future<void> _handleSave() async {
     if (_controller.text.isNotEmpty && widget.sessionId != null) {
@@ -58,19 +53,19 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add to List'),
+        title: Text(L10n.of(context, 'add_to_list')),
         content: TextField(
           controller: _controller,
           autofocus: true,
           onSubmitted: (_) => _handleSave(),
-          decoration: const InputDecoration(
-              hintText: 'e.g., Milk',
-              border: OutlineInputBorder()
+          decoration: InputDecoration(
+              hintText: L10n.of(context, 'item_hint'),
+              border: const OutlineInputBorder()
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: _handleSave, child: const Text('Add')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context, 'cancel'))),
+          ElevatedButton(onPressed: _handleSave, child: Text(L10n.of(context, 'add'))),
         ],
       ),
     );
@@ -95,7 +90,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
         return const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
-          color: Colors.white,
+          // Removed hardcoded white to adapt to Light/Dark themes
         );
     }
   }
@@ -108,12 +103,12 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       return MainLayout(
           title: 'Error',
           repository: widget.repository,
-          child: const Center(child: Text('No list selected.'))
+          child: Center(child: Text(L10n.of(context, 'error_no_list')))
       );
     }
 
     return MainLayout(
-      title: 'Items',
+      title: L10n.of(context, 'items_title'),
       repository: widget.repository,
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
@@ -122,14 +117,11 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       child: ValueListenableBuilder(
         valueListenable: itemBox.listenable(),
         builder: (context, Box<GroceryItem> box, _) {
-          // Filter items belonging to THIS list
           final items = box.values.where((i) => i.listId == widget.sessionId).toList();
-
-          // Sort: Newest first
           items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
           if (items.isEmpty) {
-            return const Center(child: Text('No items found.', style: TextStyle(color: Colors.grey)));
+            return Center(child: Text(L10n.of(context, 'no_items'), style: const TextStyle(color: Colors.grey)));
           }
 
           return ListView.separated(
@@ -155,17 +147,17 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                 ),
                 title: Text(item.name, style: _getItemStyle(item.status)),
                 subtitle: isDiscarded
-                    ? const Text('Item discarded', style: TextStyle(color: Colors.orange, fontSize: 12))
+                    ? Text(L10n.of(context, 'item_discarded'), style: const TextStyle(color: Colors.orange, fontSize: 12))
                     : null,
                 trailing: PopupMenuButton<ItemStatus>(
                   onSelected: (status) => widget.repository.updateItemStatus(item, status),
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: ItemStatus.pending, child: Text('Mark Pending')),
-                    const PopupMenuItem(value: ItemStatus.discarded, child: Text('Discard')),
+                    PopupMenuItem(value: ItemStatus.pending, child: Text(L10n.of(context, 'mark_pending'))),
+                    PopupMenuItem(value: ItemStatus.discarded, child: Text(L10n.of(context, 'discard'))),
                     const PopupMenuDivider(),
                     PopupMenuItem(
                       onTap: () => widget.repository.deleteItem(item),
-                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red)),
                     ),
                   ],
                   icon: const Icon(Icons.more_vert),

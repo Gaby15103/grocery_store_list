@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../repositories/grocery_repository.dart';
+import '../utils/l10n.dart'; // Import your new tool
 
 class SetupScreen extends StatefulWidget {
   final GroceryRepository repository;
@@ -24,16 +25,12 @@ class _SetupScreenState extends State<SetupScreen> {
     final email = _emailController.text.trim();
 
     if (firstName.isNotEmpty && lastName.isNotEmpty && email.contains('@')) {
-      // 1. Save to Hive via Repository
       await widget.repository.setUserDetails(
         firstName: firstName,
         lastName: lastName,
         email: email,
       );
-
-      // 2. Sync to Postgres
       await widget.repository.syncUserToServer();
-
       widget.onComplete();
     }
   }
@@ -45,9 +42,11 @@ class _SetupScreenState extends State<SetupScreen> {
         await widget.repository.linkAccount(code);
         widget.onComplete();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid Sync Code or Connection Error")),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(L10n.of(context, 'sync_error'))),
+          );
+        }
       }
     }
   }
@@ -62,37 +61,39 @@ class _SetupScreenState extends State<SetupScreen> {
             const SizedBox(height: 80),
             const Icon(Icons.shopping_basket, size: 80, color: Colors.blue),
             const SizedBox(height: 20),
-            Text(_isSyncing ? "Sync Your Account" : "Welcome to Grocery Master",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              _isSyncing ? L10n.of(context, 'sync_title') : L10n.of(context, 'setup_title'),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
 
             if (!_isSyncing) ...[
-              const Text("Enter your details to start sharing lists."),
+              Text(L10n.of(context, 'setup_subtitle')),
               const SizedBox(height: 30),
-              TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'First Name')),
-              TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Last Name')),
-              TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email Address')),
+              TextField(controller: _firstNameController, decoration: InputDecoration(labelText: L10n.of(context, 'first_name'))),
+              TextField(controller: _lastNameController, decoration: InputDecoration(labelText: L10n.of(context, 'last_name'))),
+              TextField(controller: _emailController, decoration: InputDecoration(labelText: L10n.of(context, 'email_address'))),
               const SizedBox(height: 30),
-              ElevatedButton(onPressed: _submit, child: const Text("Get Started")),
+              ElevatedButton(onPressed: _submit, child: Text(L10n.of(context, 'get_started'))),
               TextButton(
                 onPressed: () => setState(() => _isSyncing = true),
-                child: const Text("Already have an account? Sync here"),
+                child: Text(L10n.of(context, 'already_account')),
               ),
             ] else ...[
-              const Text("Enter the Sync Code from your other device."),
+              Text(L10n.of(context, 'sync_subtitle')),
               const SizedBox(height: 30),
               TextField(
                   controller: _syncCodeController,
-                  decoration: const InputDecoration(
-                      labelText: 'Sync Code',
-                      hintText: 'Paste code here',
-                      border: OutlineInputBorder()
+                  decoration: InputDecoration(
+                      labelText: L10n.of(context, 'sync_code'),
+                      hintText: L10n.of(context, 'sync_hint'),
+                      border: const OutlineInputBorder()
                   )
               ),
               const SizedBox(height: 30),
-              ElevatedButton(onPressed: _syncAccount, child: const Text("Sync Now")),
+              ElevatedButton(onPressed: _syncAccount, child: Text(L10n.of(context, 'sync_now'))),
               TextButton(
                 onPressed: () => setState(() => _isSyncing = false),
-                child: const Text("Back to Registration"),
+                child: Text(L10n.of(context, 'back_to_reg')),
               ),
             ],
           ],

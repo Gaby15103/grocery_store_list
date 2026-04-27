@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../repositories/grocery_repository.dart';
+import '../utils/l10n.dart';
 
 class SettingsScreen extends StatefulWidget {
   final GroceryRepository repository;
@@ -45,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Profile Updated Successfully!")),
+          SnackBar(content: Text(L10n.of(context, 'profile_updated'))),
         );
       }
     } catch (e) {
@@ -53,10 +54,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text("Update Failed"),
+            title: Text(L10n.of(context, 'update_failed')),
             content: Text(e.toString().contains("409")
-                ? "This email is already linked to another account."
-                : "Could not update profile. Check your connection."),
+                ? L10n.of(context, 'email_conflict')
+                : L10n.of(context, 'update_error')),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
             ],
@@ -70,30 +71,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Sync to Existing Account"),
+        title: Text(L10n.of(context, 'connect_existing')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Enter the Sync Code from your primary device:"),
+            Text(L10n.of(context, 'sync_subtitle')),
             const SizedBox(height: 16),
             TextField(
               controller: _syncCodeController,
-              decoration: const InputDecoration(
-                hintText: "Paste code here",
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: L10n.of(context, 'sync_hint'),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L10n.of(context, 'cancel'))),
           ElevatedButton(
               onPressed: () async {
-                // Implementation would call a repository method to link device IDs
                 // await widget.repository.linkAccount(_syncCodeController.text);
                 Navigator.pop(ctx);
               },
-              child: const Text("Sync Now")
+              child: Text(L10n.of(context, 'sync_now'))
           ),
         ],
       ),
@@ -106,73 +106,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final box = Hive.box<String>('metadata');
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Settings")),
+      appBar: AppBar(title: Text(L10n.of(context, 'settings'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionHeader("User Profile"),
-          TextField(controller: _fnameController, decoration: const InputDecoration(labelText: "First Name")),
-          TextField(controller: _lnameController, decoration: const InputDecoration(labelText: "Last Name")),
-          TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Email")),
+          _sectionHeader(L10n.of(context, 'profile_header')),
+          TextField(controller: _fnameController, decoration: InputDecoration(labelText: L10n.of(context, 'first_name'))),
+          TextField(controller: _lnameController, decoration: InputDecoration(labelText: L10n.of(context, 'last_name'))),
+          TextField(controller: _emailController, decoration: InputDecoration(labelText: L10n.of(context, 'email_address'))),
           const SizedBox(height: 16),
           ElevatedButton.icon(
               onPressed: _updateProfile,
               icon: const Icon(Icons.save),
-              label: const Text("Save Profile Changes")
+              label: Text(L10n.of(context, 'save_profile'))
           ),
 
           const Divider(height: 40),
-          _sectionHeader("Device Sync"),
+          _sectionHeader(L10n.of(context, 'sync_header')),
           ListTile(
-            title: const Text("Your Sync Code"),
+            title: Text(L10n.of(context, 'your_sync_code')),
             subtitle: Text(syncCode, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.blueGrey)),
             trailing: IconButton(
                 icon: const Icon(Icons.copy),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: syncCode));
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Code copied to clipboard")));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.of(context, 'copy_clipboard'))));
                 }
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text("Use this code on another device to access your recipes and lists.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(L10n.of(context, 'sync_description'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
           ),
           ListTile(
             leading: const Icon(Icons.sync),
-            title: const Text("Connect to Existing Account"),
-            subtitle: const Text("Sync this phone to another device"),
+            title: Text(L10n.of(context, 'connect_existing')),
+            subtitle: Text(L10n.of(context, 'sync_phone_subtitle')),
             onTap: _showSyncDialog,
           ),
 
           const Divider(height: 40),
-          _sectionHeader("Appearance"),
+          _sectionHeader(L10n.of(context, 'appearance_header')),
+          DropdownButtonFormField<String>(
+            value: box.get('language', defaultValue: 'fr'),
+            decoration: InputDecoration(
+              labelText: L10n.of(context, 'language_label'),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.language),
+            ),
+            items: [
+              DropdownMenuItem(value: 'fr', child: Text(L10n.of(context, 'lang_fr'))),
+              DropdownMenuItem(value: 'en', child: Text(L10n.of(context, 'lang_en'))),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                box.put('language', val);
+                // Note: You may need a ValueListenableBuilder in main.dart
+                // to rebuild the app with the new Locale immediately.
+              }
+            },
+          ),
+          const SizedBox(height: 20),
           DropdownButtonFormField<String>(
             value: box.get('themeMode', defaultValue: 'system'),
-            decoration: const InputDecoration(labelText: "Theme Mode", border: OutlineInputBorder()),
-            items: const [
-              DropdownMenuItem(value: 'system', child: Text("Follow System")),
-              DropdownMenuItem(value: 'light', child: Text("Light Mode")),
-              DropdownMenuItem(value: 'dark', child: Text("Dark Mode")),
+            decoration: InputDecoration(labelText: L10n.of(context, 'theme_mode'), border: const OutlineInputBorder()),
+            items: [
+              DropdownMenuItem(value: 'system', child: Text(L10n.of(context, 'follow_system'))),
+              DropdownMenuItem(value: 'light', child: Text(L10n.of(context, 'light_mode'))),
+              DropdownMenuItem(value: 'dark', child: Text(L10n.of(context, 'dark_mode'))),
             ],
             onChanged: (val) {
               if (val != null) box.put('themeMode', val);
             },
           ),
           const SizedBox(height: 20),
-          const Text("Primary Color Theme", style: TextStyle(fontWeight: FontWeight.w500)),
+          Text(L10n.of(context, 'primary_color'), style: const TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              Colors.green,
-              Colors.blue,
-              Colors.red,
-              Colors.orange,
-              Colors.purple,
-              Colors.teal,
-              Colors.pink
+              Colors.green, Colors.blue, Colors.red, Colors.orange,
+              Colors.purple, Colors.teal, Colors.pink
             ].map((color) {
               final isSelected = box.get('colorSeed') == color.value.toString();
               return GestureDetector(
@@ -187,11 +202,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const Divider(height: 40),
-          _sectionHeader("Danger Zone", color: Colors.red),
+          _sectionHeader(L10n.of(context, 'danger_zone'), color: Colors.red),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text("Factory Reset"),
-            subtitle: const Text("Wipe all local data and preferences"),
+            title: Text(L10n.of(context, 'factory_reset')),
+            subtitle: Text(L10n.of(context, 'reset_subtitle')),
             onTap: () => _handleReset(context),
           ),
         ],
@@ -210,13 +225,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Reset App?"),
-        content: const Text("This will permanently delete all local recipes, lists, and settings. This cannot be undone."),
+        title: Text(L10n.of(context, 'reset_confirm_title')),
+        content: Text(L10n.of(context, 'reset_confirm_body')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(L10n.of(context, 'cancel'))),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Wipe Everything", style: TextStyle(color: Colors.red))
+              child: Text(L10n.of(context, 'wipe_all'), style: const TextStyle(color: Colors.red))
           ),
         ],
       ),
