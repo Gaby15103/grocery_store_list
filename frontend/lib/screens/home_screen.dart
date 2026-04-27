@@ -6,6 +6,7 @@ import '../widgets/main_layout.dart';
 import '../repositories/grocery_repository.dart';
 import '../models/group.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/l10n.dart'; // Ensure this utility exists
 import 'list_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,37 +14,33 @@ class HomeScreen extends StatelessWidget {
 
   const HomeScreen({super.key, required this.repository});
 
-  // Helper to open your recipe website
   Future<void> _launchRecipeSite() async {
     final Uri url = Uri.parse('https://recipes.gaby15103.org/recipes');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      UIHelpers.showNotification("Could not launch recipe site");
+      UIHelpers.showNotification("Error: Could not launch recipe site");
     }
   }
 
-  // Reuse the logic from MainLayout to show invitations
   void _showInvitations(BuildContext context) {
     if (repository.getUserEmail() == null) {
-      UIHelpers.showNotification("Please link an account to see invitations");
+      UIHelpers.showNotification(L10n.of(context, 'no_account'));
       return;
     }
     MainLayout(
       repository: repository,
-      title: "Invitations",
+      title: L10n.of(context, 'invitations'),
       child: const SizedBox(),
     ).showReceivedInvitationsDialog(context);
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: "Dashboard",
+      title: L10n.of(context, 'dashboard'),
       repository: repository,
       child: CustomScrollView(
         slivers: [
-          // Welcome Header
+          // 1. Welcome Header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -52,18 +49,18 @@ class HomeScreen extends StatelessWidget {
                 builder: (context, snapshot) {
                   String displayName = snapshot.hasData
                       ? "${snapshot.data!.firstName} ${snapshot.data!.lastName}"
-                      : "Chef";
+                      : L10n.of(context, 'chef_fallback');
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Bonjour, $displayName",
+                        "${L10n.of(context, 'welcome')} $displayName",
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text("Here is what's happening in your kitchen."),
+                      Text(L10n.of(context, 'kitchen_status')),
                     ],
                   );
                 },
@@ -71,11 +68,14 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // Recent Groups Carousel
-          const SliverToBoxAdapter(
+          // 2. Recent Groups Carousel
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text("Recently Used", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                L10n.of(context, 'recent'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -96,7 +96,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // System Status
+          // 3. System Status
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           SliverToBoxAdapter(
             child: Padding(
@@ -105,11 +105,14 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // Functional Quick Actions
-          const SliverToBoxAdapter(
+          // 4. Functional Quick Actions
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text("Quick Access", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              child: Text(
+                L10n.of(context, 'quick_access'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           SliverPadding(
@@ -120,8 +123,20 @@ class HomeScreen extends StatelessWidget {
               crossAxisSpacing: 12,
               childAspectRatio: 1.5,
               children: [
-                _buildActionCard(context, "Family Recipes", Icons.menu_book, Colors.orange, _launchRecipeSite),
-                _buildActionCard(context, "Invitations", Icons.mail, Colors.blue, () => _showInvitations(context)),
+                _buildActionCard(
+                  context,
+                  L10n.of(context, 'recipes'),
+                  Icons.menu_book,
+                  Colors.orange,
+                  _launchRecipeSite,
+                ),
+                _buildActionCard(
+                  context,
+                  L10n.of(context, 'invitations'),
+                  Icons.mail,
+                  Colors.blue,
+                      () => _showInvitations(context),
+                ),
               ],
             ),
           ),
@@ -129,8 +144,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  // --- THE MISSING METHODS ---
 
   Widget _buildRecentCard(BuildContext context, GroceryGroup group) {
     return Card(
@@ -158,7 +171,7 @@ class HomeScreen extends StatelessWidget {
               Icon(group.isShared ? Icons.cloud : Icons.home,
                   color: group.isShared ? Colors.blue : Colors.green, size: 20),
               Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const Text("Active Group", style: TextStyle(fontSize: 10, color: Colors.grey)),
+              Text(L10n.of(context, 'active_group_label'), style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ),
@@ -183,8 +196,14 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isOnline ? "Server Connected" : "Local Mode", style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(isOnline ? "Syncing to gab-server" : "Sync disabled - No account", style: const TextStyle(fontSize: 12)),
+                Text(
+                  isOnline ? L10n.of(context, 'status_online') : L10n.of(context, 'status_offline'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  isOnline ? L10n.of(context, 'sync_info') : L10n.of(context, 'sync_disabled'),
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ),

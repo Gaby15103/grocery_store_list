@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_list.dart';
 import '../repositories/grocery_repository.dart';
 import '../widgets/main_layout.dart';
+import '../utils/l10n.dart'; // Import l10n
 import 'grocery_list_screen.dart';
 
 class ListSelectionScreen extends StatelessWidget {
@@ -20,19 +21,19 @@ class ListSelectionScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('New Grocery List'),
+        title: Text(L10n.of(context, 'new_list_title')),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g., Weekly Groceries, BBQ Party',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: L10n.of(context, 'list_hint'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(L10n.of(context, 'cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -42,7 +43,7 @@ class ListSelectionScreen extends StatelessWidget {
                 if (context.mounted) Navigator.pop(ctx);
               }
             },
-            child: const Text('Create'),
+            child: Text(L10n.of(context, 'create')),
           ),
         ],
       ),
@@ -52,11 +53,11 @@ class ListSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'My Lists',
+      title: L10n.of(context, 'my_lists'),
       repository: repository,
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateListDialog(context),
-        tooltip: 'Add New List',
+        tooltip: L10n.of(context, 'add_list_tooltip'),
         child: const Icon(Icons.add),
       ),
       child: ValueListenableBuilder(
@@ -71,11 +72,11 @@ class ListSelectionScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.list_alt, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text('No lists found for this group.'),
+                  Text(L10n.of(context, 'no_lists_found')),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () => _showCreateListDialog(context),
-                    child: const Text('Create your first list'),
+                    child: Text(L10n.of(context, 'create_first_list')),
                   ),
                 ],
               ),
@@ -86,6 +87,9 @@ class ListSelectionScreen extends StatelessWidget {
             itemCount: lists.length,
             itemBuilder: (context, index) {
               final groceryList = lists[index];
+              // Simple date formatting
+              final dateStr = "${groceryList.createdAt.day}/${groceryList.createdAt.month}/${groceryList.createdAt.year}";
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
@@ -94,9 +98,7 @@ class ListSelectionScreen extends StatelessWidget {
                     groceryList.name,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    'Created on ${groceryList.createdAt.day}/${groceryList.createdAt.month}/${groceryList.createdAt.year}',
-                  ),
+                  subtitle: Text("${L10n.of(context, 'created_on')} $dateStr"),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.push(

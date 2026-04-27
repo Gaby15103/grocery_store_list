@@ -1,29 +1,28 @@
 import 'dart:async';
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
   static final _notifications = FlutterLocalNotificationsPlugin();
-
   static final StreamController<String?> selectNotificationStream = StreamController<String?>.broadcast();
 
-  static Future<void> init() async {
+  static Future<void> init({String channelName = 'Grocery Updates', String channelDesc = 'Grocery list changes'}) async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-      if (response.payload != null) {
-        selectNotificationStream.add(response.payload);
-      }
-    },);
+        if (response.payload != null) {
+          selectNotificationStream.add(response.payload);
+        }
+      },
+    );
 
-    // Create a high-priority channel for Android
-    const androidChannel = AndroidNotificationChannel(
+    // Using the localized strings passed during initialization
+    final androidChannel = AndroidNotificationChannel(
       'grocery_sync_channel',
-      'Grocery Updates',
-      description: 'Notifications for grocery list changes',
+      channelName,
+      description: channelDesc,
       importance: Importance.max,
     );
 
@@ -45,7 +44,7 @@ class NotificationService {
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'grocery_sync_channel',
-          'Grocery Updates',
+          'Grocery Updates', // This matches the channel name above
           importance: Importance.max,
           priority: Priority.high,
         ),

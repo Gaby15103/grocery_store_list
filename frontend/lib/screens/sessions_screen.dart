@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_list.dart';
 import '../repositories/grocery_repository.dart';
 import '../widgets/main_layout.dart';
+import '../utils/l10n.dart'; // Import localization tool
 import 'grocery_list_screen.dart';
 
 class SessionsScreen extends StatelessWidget {
@@ -14,22 +15,20 @@ class SessionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Archived Lists',
+      title: L10n.of(context, 'archived_lists'),
       repository: repository,
       child: ValueListenableBuilder(
-        // We listen to the lists box now, as that's our primary record of "trips"
         valueListenable: Hive.box<GroceryList>('lists').listenable(),
         builder: (context, Box<GroceryList> box, _) {
-          // Get archived lists for this group from the repository
           final archivedLists = repository.getListsForGroup(groupId)
               .where((l) => l.isArchived)
               .toList();
 
           if (archivedLists.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'No archived trips yet.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
+                L10n.of(context, 'no_archived_trips'),
+                style: const TextStyle(color: Colors.grey, fontSize: 16),
               ),
             );
           }
@@ -40,19 +39,25 @@ class SessionsScreen extends StatelessWidget {
               final groceryList = archivedLists[index];
               final date = groceryList.createdAt;
 
+              // Localized date and time string
+              final dateStr = "${date.day}/${date.month}/${date.year}";
+              final timeStr = "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
                   leading: const CircleAvatar(
                     child: Icon(Icons.inventory_2_outlined),
                   ),
-                  title: Text(groceryList.name),
+                  title: Text(
+                    groceryList.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(
-                    'Completed on ${date.day}/${date.month}/${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
+                    '${L10n.of(context, 'completed_on')} $dateStr ${L10n.of(context, 'at_time')} $timeStr',
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Open the specific archived list in the Home Screen
                     Navigator.push(
                       context,
                       MaterialPageRoute(
