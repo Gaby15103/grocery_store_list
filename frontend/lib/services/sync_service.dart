@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../models/group_list.dart';
 import '../models/item.dart';
 import '../models/group.dart';
@@ -12,15 +13,7 @@ class SyncService {
 
   final Utils _utils = Utils();
 
-  String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000';
-    } else {
-      return 'http://localhost:3000';
-    }
-  }
+  String get baseUrl => AppConfig.apiUrl;
 
   // --- USER SYNC ---
 
@@ -29,7 +22,7 @@ class SyncService {
     return {
       'Content-Type': 'application/json',
       'x-user-email': email ?? '',
-      'x-device-id': await _utils.getUniqueDeviceId(),
+      'x-device-id': await _utils.getUniqueDeviceId()
     };
   }
 
@@ -60,7 +53,7 @@ class SyncService {
   Future<void> updateUserProfile({
     required String firstName,
     required String lastName,
-    required String email,
+    required String email
   }) async {
     final response = await http.put(
       Uri.parse('$baseUrl/users/profile'),
@@ -68,7 +61,7 @@ class SyncService {
       body: jsonEncode({
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
+        'email': email
       }),
     );
 
@@ -76,6 +69,32 @@ class SyncService {
       throw Exception("409: Email already in use");
     } else if (response.statusCode != 200) {
       throw Exception("Failed to update profile on server: ${response.body}");
+    }
+  }
+
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/me'),
+      headers: await _headers,
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("User not found");
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserProfile(String email) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/profile/$email'),
+      headers: await _headers,
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("User not found");
     }
   }
 

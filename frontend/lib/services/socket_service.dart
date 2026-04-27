@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
+import '../config.dart';
 import '../repositories/grocery_repository.dart';
 
 class SocketEvent {
@@ -22,11 +23,7 @@ class SocketService {
 
   SocketService(this.repository);
 
-  String get baseUrl {
-    if (kIsWeb) return dotenv.env['API_URL'] ?? 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
-    return dotenv.env['API_URL'] ?? 'http://localhost:3000';
-  }
+  String get baseUrl => AppConfig.apiUrl;
 
   void connect(String userEmail) {
     socket = IO.io(baseUrl, <String, dynamic>{

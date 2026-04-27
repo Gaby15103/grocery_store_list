@@ -77,13 +77,27 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   }
 
   TextStyle _getItemStyle(ItemStatus status) {
-    if (status == ItemStatus.bought) {
-      return const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey);
+    switch (status) {
+      case ItemStatus.bought:
+        return const TextStyle(
+          decoration: TextDecoration.lineThrough,
+          color: Colors.grey,
+          fontSize: 16,
+        );
+      case ItemStatus.discarded:
+        return const TextStyle(
+          fontStyle: FontStyle.italic,
+          color: Colors.orange,
+          decoration: TextDecoration.lineThrough,
+          fontSize: 16,
+        );
+      default:
+        return const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        );
     }
-    if (status == ItemStatus.discarded) {
-      return const TextStyle(fontStyle: FontStyle.italic, color: Colors.orangeAccent, decoration: TextDecoration.lineThrough);
-    }
-    return const TextStyle(fontWeight: FontWeight.bold, fontSize: 16);
   }
 
   @override
@@ -124,8 +138,13 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = items[index];
+              final isDiscarded = item.status == ItemStatus.discarded;
+
               return ListTile(
-                leading: Checkbox(
+                tileColor: isDiscarded ? Colors.orange.withOpacity(0.05) : null,
+                leading: isDiscarded
+                    ? const Icon(Icons.delete_sweep, color: Colors.orange)
+                    : Checkbox(
                   value: item.status == ItemStatus.bought,
                   onChanged: (val) {
                     widget.repository.updateItemStatus(
@@ -135,7 +154,9 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                   },
                 ),
                 title: Text(item.name, style: _getItemStyle(item.status)),
-                subtitle: item.status == ItemStatus.discarded ? const Text('Discarded') : null,
+                subtitle: isDiscarded
+                    ? const Text('Item discarded', style: TextStyle(color: Colors.orange, fontSize: 12))
+                    : null,
                 trailing: PopupMenuButton<ItemStatus>(
                   onSelected: (status) => widget.repository.updateItemStatus(item, status),
                   itemBuilder: (context) => [

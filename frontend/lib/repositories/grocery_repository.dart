@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:frontend/utils.dart';
 import 'package:hive/hive.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -5,6 +7,8 @@ import 'dart:io';
 import '../models/group_list.dart';
 import '../models/item.dart';
 import '../models/group.dart';
+import '../models/user.dart';
+import '../models/user_profile.dart';
 import '../services/socket_service.dart';
 import '../services/sync_service.dart';
 import '../utils/ui_helpers.dart';
@@ -151,6 +155,16 @@ class GroceryRepository {
     return _metaBox.get('userEmail');
   }
 
+  Future<User> getCurrentUser() async {
+    final data = await _syncService.getCurrentUser();
+    return User.fromJson(data);
+  }
+
+  Future<UserProfile> getUserProfile(String email) async {
+    final data = await _syncService.getUserProfile(email);
+    return UserProfile.fromJson(data);
+  }
+
   /// Saves initial user info to Hive
   Future<void> setUserDetails({
     required String firstName,
@@ -187,14 +201,13 @@ class GroceryRepository {
     await _syncService.updateUserProfile(
       firstName: firstName,
       lastName: lastName,
-      email: email,
+      email: email
     );
 
     await _metaBox.put('firstName', firstName);
     await _metaBox.put('lastName', lastName);
     await _metaBox.put('userEmail', email);
 
-    print("Profile updated successfully for $email");
   }
 
   /// Use this to link this device to an existing account using a Sync Code
@@ -371,12 +384,11 @@ class GroceryRepository {
   Future<void> updateItemStatus(GroceryItem item, ItemStatus newStatus) async {
     item.status = newStatus;
 
+    await item.save();
+
     if (_shouldSync()) {
       // Update the record in Postgres
       await _syncService.updateItemOnServer(item, getActiveGroupId());
-    } else {
-      // Update the record in Hive
-      await item.save();
     }
   }
 

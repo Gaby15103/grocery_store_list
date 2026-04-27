@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:frontend/screens/grocery_list_screen.dart';
+import 'package:frontend/screens/home_screen.dart';
 import 'package:frontend/screens/list_selection_screen.dart';
 import 'package:frontend/screens/setup_screen.dart';
 import 'package:frontend/screens/settings_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'config.dart';
 import 'models/group_list.dart';
 import 'models/item.dart';
 import 'models/group.dart';
@@ -19,6 +21,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await AppConfig.init();
   await dotenv.load();
   await NotificationService.init();
 
@@ -185,19 +188,30 @@ class _GroceryAppState extends State<GroceryApp> {
           debugShowCheckedModeBanner: false,
           title: 'Grocery Master',
           themeMode: currentThemeMode,
-          theme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.light),
-          darkTheme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.dark),
+          theme: ThemeData(
+              colorSchemeSeed: seedColor,
+              useMaterial3: true,
+              brightness: Brightness.light
+          ),
+          darkTheme: ThemeData(
+              colorSchemeSeed: seedColor,
+              useMaterial3: true,
+              brightness: Brightness.dark
+          ),
           home: userEmail == null
               ? SetupScreen(
             repository: widget.repository,
             onComplete: () => setState(() {}),
           )
-              : ListSelectionScreen(
-            repository: widget.repository,
-            groupId: widget.repository.getActiveGroupId(),
-          ),
+              : HomeScreen(repository: widget.repository),
+
           routes: {
             '/settings': (context) => SettingsScreen(repository: widget.repository),
+            '/home': (context) => HomeScreen(repository: widget.repository),
+            '/groups': (context) => ListSelectionScreen(
+              repository: widget.repository,
+              groupId: widget.repository.getActiveGroupId(),
+            ),
           },
         );
       },

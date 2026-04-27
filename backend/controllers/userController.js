@@ -3,10 +3,23 @@ const { User, UserGroup, Group, Op } = require('../models');
 exports.register = async (req, res) => {
     try {
         const { firstName, lastName, email, deviceId } = req.body;
-        const [user, created] = await User.findOrCreate({ where: { email }, defaults: { firstName, lastName, deviceId } });
-        if (!created && deviceId) await user.update({ deviceId });
-        res.status(201).json(user);
-    } catch (error) { res.status(500).send("Internal Server Error"); }
+
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(409).json({ error: "User already exists. Use Sync Code to link." });
+        }
+
+        const newUser = await User.create({
+            email,
+            firstName,
+            lastName,
+            authorizedDevices: [deviceId] // First device is automatically authorized
+        });
+
+        res.status(201).json(newUser);
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
 exports.getInvitations = async (req, res) => {
@@ -26,23 +39,123 @@ exports.getInvitations = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     const { firstName, lastName, email } = req.body;
     const currentEmail = req.headers['x-user-email'];
+    const deviceId = req.headers['x-device-id'];
+
+    if (!deviceId) {
+        return res.status(403).json({ error: "Device identification missing" });
+    }
+
     try {
+        const user = await User.findOne({ where: { email: currentEmail } });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const isAuthorized = user.authorizedDevices && user.authorizedDevices.includes(deviceId);
+
+        if (!isAuthorized) {
+            return res.status(401).json({ error: "Unauthorized device." });
+        }
+
         if (email !== currentEmail) {
             const exists = await User.findOne({ where: { email } });
             if (exists) return res.status(409).json({ error: "Email in use" });
         }
-        await User.update({ firstName, lastName, email }, { where: { email: currentEmail } });
+
+        await user.update({ firstName, lastName, email });
+
         res.status(200).json({ message: "Profile updated" });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getUser = async (req, res) => {
+    const email = req.headers['x-user-email'];
+    const deviceId = req.headers['x-device-id'];
+
+    try {
+        const user = await User.findOne({
+            where: { email },
+            attributes: ['firstName', 'lastName', 'email', 'authorizedDevices']
+        });
+
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const userData = user.toJSON();
+        // Add a flag so the Flutter app knows if it needs to prompt for verification
+        userData.isCurrentDeviceVerified = user.authorizedDevices.includes(deviceId);
+
+        res.status(200).json(userData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getUser = async (req, res) => {
+    const email = req.headers['x-user-email'];
+    const deviceId = req.headers['x-device-id'];
+
+    try {
+        const user = await User.findOne({
+            where: { email },
+            attributes: ['firstName', 'lastName', 'email', 'authorizedDevices']
+        });
+
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const userData = user.toJSON();
+        userData.isCurrentDeviceVerified = user.authorizedDevices.includes(deviceId);
+
+        res.status(200).json(userData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getUserProfile = async (req, res) => {
+    const targetEmail = req.params.email;
+
+    try {
+        const user = await User.findOne({
+            where: { email: targetEmail },
+            attributes: ['firstName', 'lastName', 'email']
+        });
+
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 exports.linkAccount = async (req, res) => {
-    const { targetSyncCode } = req.body;
+    const { currentDeviceId, targetSyncCode } = req.body;
+
     try {
-        const target = await User.findOne({ where: { deviceId: targetSyncCode } });
-        if (!target) return res.status(404).json({ error: "Code not found" });
-        res.json({ user: { email: target.email, firstName: target.firstName, lastName: target.lastName } });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+        const user = await User.findOne({
+            where: {
+                authorizedDevices: { [Op.contains]: [targetSyncCode] }
+            }
+        });
+        if (!targetSyncCode || !user) {
+            return res.status(404).json({ error: "Invalid Sync Code." });
+        }
+        let devices = [...user.authorizedDevices];
+        if (!devices.includes(currentDeviceId)) {
+            devices.push(currentDeviceId);
+            user.authorizedDevices = devices;
+            await user.save();
+        }
+        res.status(200).json({
+            user: {
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 exports.getContacts = async (req, res) => {

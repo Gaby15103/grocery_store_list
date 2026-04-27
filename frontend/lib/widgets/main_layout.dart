@@ -325,6 +325,12 @@ class MainLayout extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(activeGroup.name ?? title),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        )
+            : null,
         actions: [
           if (activeGroup.id.isNotEmpty)
             IconButton(
