@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import '../config.dart';
 import '../models/item.dart';
 import '../repositories/grocery_repository.dart';
 import '../widgets/main_layout.dart';
-import '../utils/l10n.dart'; // Import localization tool
+import '../utils/l10n.dart';
 
 class GroceryListScreen extends StatefulWidget {
   final GroceryRepository repository;
@@ -17,6 +21,9 @@ class GroceryListScreen extends StatefulWidget {
 
 class _GroceryListScreenState extends State<GroceryListScreen> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _noteController = TextEditingController();
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -31,7 +38,24 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   void dispose() {
     widget.repository.setCurrentlyViewedList(null);
     _controller.dispose();
+    _noteController.dispose();
     super.dispose();
+  }
+
+  ItemStatus _statusFromSocketString(String status) {
+    return ItemStatus.values.firstWhere(
+          (e) => e.name == status,
+      orElse: () => ItemStatus.pending,
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source, imageQuality: 50);
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+    }
   }
 
   Future<void> _handleSave() async {
@@ -41,10 +65,14 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       await widget.repository.addItemToList(
           _controller.text,
           widget.sessionId!,
-          activeGroupId
+          activeGroupId,
+          _noteController.text,
+          _selectedImage,
       );
 
       _controller.clear();
+      _noteController.clear();
+      setState(() => _selectedImage = null);
       if (mounted) Navigator.pop(context);
     }
   }
@@ -52,21 +80,142 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   void _showAddDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(L10n.of(context, 'add_to_list')),
-        content: TextField(
-          controller: _controller,
-          autofocus: true,
-          onSubmitted: (_) => _handleSave(),
-          decoration: InputDecoration(
-              hintText: L10n.of(context, 'item_hint'),
-              border: const OutlineInputBorder()
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(L10n.of(context, 'add_to_list')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  decoration: InputDecoration(hintText: L10n.of(context, 'item_hint')),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _noteController,
+                  decoration: InputDecoration(hintText: L10n.of(context, 'note_hint')),
+                ),
+                const SizedBox(height: 15),
+                if (_selectedImage != null)
+                  Image.file(_selectedImage!, height: 100, width: 100, fit: BoxFit.cover),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt),
+                      onPressed: () async {
+                        await _pickImage(ImageSource.camera);
+                        setDialogState(() {});
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.photo_library),
+                      onPressed: () async {
+                        await _pickImage(ImageSource.gallery);
+                        setDialogState(() {});
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context, 'cancel'))),
+            ElevatedButton(onPressed: _handleSave, child: Text(L10n.of(context, 'add'))),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context, 'cancel'))),
-          ElevatedButton(onPressed: _handleSave, child: Text(L10n.of(context, 'add'))),
-        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(GroceryItem item) {
+    _controller.text = item.name;
+    _noteController.text = item.note ?? '';
+    File? editImage;
+    bool clearImage = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(L10n.of(context, 'edit_item')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(hintText: L10n.of(context, 'item_hint')),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _noteController,
+                  decoration: InputDecoration(hintText: L10n.of(context, 'note_hint')),
+                ),
+                const SizedBox(height: 15),
+
+                // Image Preview logic
+                if (!clearImage && (editImage != null || item.imagePath != null))
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: editImage != null
+                            ? Image.file(editImage!, height: 100, width: 100, fit: BoxFit.cover)
+                            : Image.network('${AppConfig.apiUrl}/${item.imagePath}', height: 100, width: 100, fit: BoxFit.cover),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red),
+                        onPressed: () => setDialogState(() => clearImage = true),
+                      ),
+                    ],
+                  ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt),
+                      onPressed: () async {
+                        final XFile? image = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+                        if (image != null) setDialogState(() { editImage = File(image.path); clearImage = false; });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.photo_library),
+                      onPressed: () async {
+                        final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+                        if (image != null) setDialogState(() { editImage = File(image.path); clearImage = false; });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context, 'cancel'))),
+            ElevatedButton(
+              onPressed: () async {
+                await widget.repository.updateItemDetails(
+                  item: item,
+                  newName: _controller.text,
+                  newNote: _noteController.text,
+                  newImageFile: editImage,
+                  shouldClearImage: clearImage,
+                );
+                if (mounted) Navigator.pop(context);
+                _controller.clear();
+                _noteController.clear();
+              },
+              child: Text(L10n.of(context, 'save')),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -90,7 +239,6 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
         return const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
-          // Removed hardcoded white to adapt to Light/Dark themes
         );
     }
   }
@@ -132,35 +280,160 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
               final item = items[index];
               final isDiscarded = item.status == ItemStatus.discarded;
 
-              return ListTile(
-                tileColor: isDiscarded ? Colors.orange.withOpacity(0.05) : null,
-                leading: isDiscarded
-                    ? const Icon(Icons.delete_sweep, color: Colors.orange)
-                    : Checkbox(
-                  value: item.status == ItemStatus.bought,
-                  onChanged: (val) {
-                    widget.repository.updateItemStatus(
-                      item,
-                      val! ? ItemStatus.bought : ItemStatus.pending,
-                    );
-                  },
-                ),
-                title: Text(item.name, style: _getItemStyle(item.status)),
-                subtitle: isDiscarded
-                    ? Text(L10n.of(context, 'item_discarded'), style: const TextStyle(color: Colors.orange, fontSize: 12))
-                    : null,
-                trailing: PopupMenuButton<ItemStatus>(
-                  onSelected: (status) => widget.repository.updateItemStatus(item, status),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(value: ItemStatus.pending, child: Text(L10n.of(context, 'mark_pending'))),
-                    PopupMenuItem(value: ItemStatus.discarded, child: Text(L10n.of(context, 'discard'))),
-                    const PopupMenuDivider(),
-                    PopupMenuItem(
-                      onTap: () => widget.repository.deleteItem(item),
-                      child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red)),
+              // 1. Check if there is actually content to show
+              final hasNote = item.note != null && item.note!.trim().isNotEmpty;
+              final hasImage = item.imagePath != null && item.imagePath!.isNotEmpty;
+              final hasExtra = hasNote || hasImage;
+
+              // 2. Define shared widgets to keep code clean
+              Widget leading = isDiscarded
+                  ? const Icon(Icons.delete_sweep, color: Colors.orange)
+                  : Checkbox(
+                value: item.status == ItemStatus.bought,
+                onChanged: (val) {
+                  widget.repository.updateItemStatus(
+                    item,
+                    val! ? ItemStatus.bought : ItemStatus.pending,
+                  );
+                },
+              );
+
+              Widget title = Row(
+                children: [
+                  Expanded(child: Text(item.name, style: _getItemStyle(item.status))),
+                  if (hasExtra)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8.0),
+                      child: Icon(Icons.info_outline, size: 14, color: Colors.blueAccent),
+                    ),
+                ],
+              );
+
+              Widget trailing = PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _showEditDialog(item);
+                  } else {
+                    widget.repository.updateItemStatus(item, _statusFromSocketString(value));
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: 'pending', child: Text(L10n.of(context, 'mark_pending'))),
+                  PopupMenuItem(value: 'discarded', child: Text(L10n.of(context, 'discard'))),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(value: 'edit', child: Text(L10n.of(context, 'edit'))),
+                  PopupMenuItem(
+                    onTap: () => widget.repository.deleteItem(item),
+                    child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red)),
+                  ),
+                ],
+                icon: const Icon(Icons.more_vert),
+              );
+
+              // 3. Conditional Rendering: Only use ExpansionTile if there is a note or image
+              if (!hasExtra) {
+                return ListTile(
+                  leading: leading,
+                  title: title,
+                  subtitle: isDiscarded ? Text(L10n.of(context, 'item_discarded'), style: const TextStyle(color: Colors.orange, fontSize: 12)) : null,
+                  trailing: trailing,
+                );
+              }
+
+              return Theme(
+                // This removes the default borders that ExpansionTile adds
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  iconColor: isDiscarded ? Colors.orange.withOpacity(0.05) : null,
+                  leading: isDiscarded
+                      ? const Icon(Icons.delete_sweep, color: Colors.orange)
+                      : Checkbox(
+                    value: item.status == ItemStatus.bought,
+                    onChanged: (val) {
+                      widget.repository.updateItemStatus(
+                        item,
+                        val! ? ItemStatus.bought : ItemStatus.pending,
+                      );
+                    },
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(item.name, style: _getItemStyle(item.status)),
+                      ),
+                      if (hasExtra)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8.0),
+                          child: Icon(Icons.info_outline, size: 14, color: Colors.blueAccent),
+                        ),
+                    ],
+                  ),
+                  subtitle: isDiscarded
+                      ? Text(L10n.of(context, 'item_discarded'),
+                      style: const TextStyle(color: Colors.orange, fontSize: 12))
+                      : null,
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _showEditDialog(item);
+                      } else {
+                        widget.repository.updateItemStatus(item, _statusFromSocketString(value));
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'pending', child: Text(L10n.of(context, 'mark_pending'))),
+                      PopupMenuItem(value: 'discarded', child: Text(L10n.of(context, 'discard'))),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(value: 'edit', child: Text(L10n.of(context, 'edit'))),
+                      PopupMenuItem(
+                        onTap: () => widget.repository.deleteItem(item),
+                        child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                    icon: const Icon(Icons.more_vert),
+                  ),
+
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(72, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, // Forces children to start on the left
+                          children: [
+                            if (item.note != null && item.note!.isNotEmpty)
+                              Text(
+                                item.note!,
+                                textAlign: TextAlign.left,
+                                style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
+                              ),
+                            if (item.imagePath != null && item.imagePath!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  // Use the server URL for synced items
+                                  '${AppConfig.apiUrl}/${item.imagePath}',
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  // Fallback to local file if network fails (useful for offline adds)
+                                  errorBuilder: (ctx, err, stack) => Image.file(
+                                    File(item.imagePath!),
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (c, e, s) => const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                  icon: const Icon(Icons.more_vert),
                 ),
               );
             },

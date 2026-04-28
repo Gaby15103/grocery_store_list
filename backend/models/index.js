@@ -37,6 +37,14 @@ const Item = sequelize.define('Item', {
         type: DataTypes.ENUM('pending', 'bought', 'discarded'),
         defaultValue: 'pending'
     },
+    note: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    imagePath: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
 });
 
 

@@ -21,9 +21,9 @@ exports.getListItems = async (req, res) => {
 };
 
 exports.createItem = async (req, res) => {
-    const { name, status, listId, groupId } = req.body;
+    const { name, status, listId, groupId, note, imagePath } = req.body;
     try {
-        const item = await Item.create({ name, status, ListId: listId });
+        const item = await Item.create({ name, status, ListId: listId, note, imagePath });
         if (groupId) {
             req.io.to(groupId).emit('item_added', {
                 ...item.toJSON(),
@@ -61,10 +61,10 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const { name, listId, status, groupId } = req.body;
+    const { name, listId, status, groupId, note, imagePath  } = req.body;
     try {
         const [updatedRows] = await Item.update(
-            { status },
+            { name, status, note, imagePath },
             { where: { name, ListId: listId } }
         );
 

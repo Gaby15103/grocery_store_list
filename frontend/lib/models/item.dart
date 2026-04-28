@@ -14,19 +14,15 @@ class GroceryItem extends HiveObject {
   @HiveField(0) String name;
   @HiveField(1) ItemStatus status;
   @HiveField(2) DateTime createdAt;
-  @HiveField(3) String listId;   // The specific "Trip" ID
-  @HiveField(4) String groupId;  // The owner (Personal, Family, etc.)
+  @HiveField(3) String listId;
+  @HiveField(4) String groupId;
 
-  @HiveField(5) String? addedBy;    // User ID/Name who created it
-  @HiveField(6) String? modifiedBy; // User ID/Name who last changed status
+  @HiveField(5) String? addedBy;
+  @HiveField(6) String? modifiedBy;
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'status': status.name, // pending, bought, etc.
-    'createdAt': createdAt.toIso8601String(),
-    'listId': listId,
-    'groupId': groupId,
-  };
+  // --- NEW FIELDS ---
+  @HiveField(7) String? note;      // For the item note
+  @HiveField(8) String? imagePath; // For the server-side image path
 
   GroceryItem({
     required this.name,
@@ -36,7 +32,19 @@ class GroceryItem extends HiveObject {
     required this.groupId,
     this.addedBy,
     this.modifiedBy,
+    this.note,       // Added
+    this.imagePath,  // Added
   });
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'status': status.name,
+    'createdAt': createdAt.toIso8601String(),
+    'listId': listId,
+    'groupId': groupId,
+    'note': note,           // Added to JSON
+    'imagePath': imagePath, // Added to JSON
+  };
 
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
     return GroceryItem(
@@ -45,6 +53,10 @@ class GroceryItem extends HiveObject {
       groupId: json['groupId'] ?? '',
       status: _statusFromString(json['status']),
       createdAt: DateTime.parse(json['createdAt']),
+      note: json['note'],           // Added from JSON
+      imagePath: json['imagePath'], // Added from JSON
+      addedBy: json['addedBy'],
+      modifiedBy: json['modifiedBy'],
     );
   }
 

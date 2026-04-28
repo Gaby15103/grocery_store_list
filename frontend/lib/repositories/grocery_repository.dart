@@ -54,7 +54,7 @@ class GroceryRepository {
     final email = getUserEmail();
     print(email);
 
-    if (email != null){
+    if (email != null) {
       await syncUserToServer();
 
       final remoteGroups = await _syncService.fetchGroupsFromServer();
@@ -142,11 +142,10 @@ class GroceryRepository {
   /// Helper to map socket strings to your Enum
   ItemStatus _statusFromSocketString(String status) {
     return ItemStatus.values.firstWhere(
-            (e) => e.name == status,
-        orElse: () => ItemStatus.pending
+      (e) => e.name == status,
+      orElse: () => ItemStatus.pending,
     );
   }
-
 
   // --- USER LOGIC ---
 
@@ -185,10 +184,10 @@ class GroceryRepository {
 
     if (firstName != null && lastName != null && email != null) {
       await _syncService.registerUser(
-          firstName: firstName,
-          lastName: lastName,
-          email: email,
-          deviceId: deviceId
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        deviceId: deviceId,
       );
     }
   }
@@ -196,18 +195,17 @@ class GroceryRepository {
   Future<void> updateProfile({
     required String firstName,
     required String lastName,
-    required String email
+    required String email,
   }) async {
     await _syncService.updateUserProfile(
       firstName: firstName,
       lastName: lastName,
-      email: email
+      email: email,
     );
 
     await _metaBox.put('firstName', firstName);
     await _metaBox.put('lastName', lastName);
     await _metaBox.put('userEmail', email);
-
   }
 
   /// Use this to link this device to an existing account using a Sync Code
@@ -215,8 +213,8 @@ class GroceryRepository {
     try {
       final deviceId = await _utils.getUniqueDeviceId();
       final userData = await _syncService.linkDevices(
-          currentDeviceId: deviceId,
-          targetCode: targetSyncCode
+        currentDeviceId: deviceId,
+        targetCode: targetSyncCode,
       );
 
       await _metaBox.put('userEmail', userData['email']);
@@ -305,7 +303,6 @@ class GroceryRepository {
     return _metaBox.get('activeGroupId') ?? 'default';
   }
 
-
   Future<void> setActiveGroup(String groupId) async {
     await _metaBox.put('activeGroupId', groupId);
 
@@ -331,16 +328,15 @@ class GroceryRepository {
   Future<void> createList(String name, String groupId) async {
     final id = 'list_${DateTime.now().millisecondsSinceEpoch}';
     final newList = GroceryList(
-        id: id,
-        name: name,
-        groupId: groupId,
-        createdAt: DateTime.now()
+      id: id,
+      name: name,
+      groupId: groupId,
+      createdAt: DateTime.now(),
     );
 
     if (_shouldSync()) {
       await _syncService.createListOnServer(newList);
-
-    }else{
+    } else {
       await _listBox.put(id, newList);
     }
   }
@@ -363,19 +359,34 @@ class GroceryRepository {
     return _itemBox.values.where((item) => item.listId == listId).toList();
   }
 
-  Future<void> addItemToList(String name, String listId, String groupId) async {
+
+  Future<void> addItemToList(
+    String name,
+    String listId,
+    String groupId,
+    String? note,
+    File? imageFile,
+  ) async {
+    String? finalImagePath;
+
+    if (imageFile != null && _shouldSync()) {
+      finalImagePath = await _syncService.uploadFile(imageFile);
+    } else if (imageFile != null) {
+      finalImagePath = imageFile.path;
+    }
+
     final newItem = GroceryItem(
       name: name,
       status: ItemStatus.pending,
       createdAt: DateTime.now(),
       listId: listId,
       groupId: groupId,
+      note: note,
+      imagePath: finalImagePath,
     );
 
-    // 1. ALWAYS save to Hive first. This triggers the UI instantly.
     await _itemBox.put('${listId}_$name', newItem);
 
-    // 2. Then sync to server if needed
     if (_shouldSync()) {
       await _syncService.addItemOnServer(newItem);
     }
@@ -392,7 +403,38 @@ class GroceryRepository {
     }
   }
 
+  Future<void> updateItemDetails({
+    required GroceryItem item,
+    required String newName,
+    String? newNote,
+    File? newImageFile,
+    bool shouldClearImage = false,
+  }) async {
+    // 1. Handle Image Logic
+    if (shouldClearImage) {
+      item.imagePath = null;
+    } else if (newImageFile != null) {
+      // If shared, upload to server; otherwise, save local path
+      if (_shouldSync()) {
+        final serverPath = await _syncService.uploadFile(newImageFile);
+        if (serverPath != null) item.imagePath = serverPath;
+      } else {
+        item.imagePath = newImageFile.path;
+      }
+    }
 
+    // 2. Update Basic Fields
+    item.name = newName;
+    item.note = newNote;
+
+    // 3. Save Locally
+    await item.save();
+
+    // 4. Sync to Server
+    if (_shouldSync()) {
+      await _syncService.updateItemOnServer(item, getActiveGroupId());
+    }
+  }
 
   // --- CARRY OVER / ARCHIVE LOGIC ---
 
@@ -408,13 +450,31 @@ class GroceryRepository {
     // Get the ID of the list we just created (the most recent one)
     final newListId = getListsForGroup(groupId).first.id;
 
-    final carryOverItems = _itemBox.values.where((item) =>
-    item.listId == oldListId &&
-        item.status == ItemStatus.pending
-    ).toList();
+    final carryOverItems = _itemBox.values
+        .where(
+          (item) =>
+              item.listId == oldListId && item.status == ItemStatus.pending,
+        )
+        .toList();
 
     for (var item in carryOverItems) {
-      await addItemToList(item.name, newListId, groupId);
+      String? finalImagePath;
+
+      final newItem = GroceryItem(
+        name: item.name,
+        status: item.status,
+        createdAt: item.createdAt,
+        listId: newListId,
+        groupId: groupId,
+        note: item.note,
+        imagePath: finalImagePath,
+      );
+
+      await _itemBox.put('${newListId}_$item.name', newItem);
+
+      if (_shouldSync()) {
+        await _syncService.addItemOnServer(newItem);
+      }
     }
 
     oldList.isArchived = true;
@@ -428,7 +488,11 @@ class GroceryRepository {
 
   Future<void> deleteItem(GroceryItem item) async {
     if (_shouldSync()) {
-      await _syncService.deleteItemOnServer(item.name, item.listId, getActiveGroupId());
+      await _syncService.deleteItemOnServer(
+        item.name,
+        item.listId,
+        getActiveGroupId(),
+      );
     } else {
       await item.delete();
     }
