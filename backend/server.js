@@ -29,6 +29,11 @@ app.use((req, res, next) => {
     req.io = io;
     next();
 });
+
+app.get('/', async (req, res) => {
+    res.json('All is working well.');
+});
+
 app.use('/groups', require('./routes/groupRoutes'));
 app.use('/items', require('./routes/itemRoutes'));
 app.use('/lists', require('./routes/listRoutes'));
