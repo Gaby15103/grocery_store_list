@@ -17,4 +17,26 @@ class GroceryList extends HiveObject {
     required this.createdAt,
     this.isArchived = false,
   });
+
+  factory GroceryList.fromJson(Map<String, dynamic> json) {
+    return GroceryList(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      groupId: json['group_id'] as String,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      isArchived: json['is_archived'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'group_id': groupId,
+      'created_at': createdAt.toIso8601String(),
+      'is_archived': isArchived,
+    };
+  }
 }

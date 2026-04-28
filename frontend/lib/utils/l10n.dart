@@ -113,6 +113,12 @@ class L10n {
       'select_photo': 'Choisir une photo',
       'item_details': 'Détails de l\'article',
       'details': 'Details',
+
+      "groceries": "Épicerie",
+      "finish_shopping_title": "Terminer les courses?",
+      "carry_over_warning": "Les articles restants iront dans une nouvelle liste et celle-ci sera archivée.",
+      "new_list_name_hint": "Nom de la nouvelle liste",
+      "archive_and_carry": "Archiver et Continuer"
     },
     'en': {
       // Home Screen
@@ -225,6 +231,12 @@ class L10n {
       'select_photo': 'Select photo',
       'item_details': 'Item Details',
       'details': 'Details',
+
+      "groceries": "Groceries",
+      "finish_shopping_title": "Finish Weekly Shopping?",
+      "carry_over_warning": "Pending items will move to a new list and this one will be archived.",
+      "new_list_name_hint": "New List Name",
+      "archive_and_carry": "Archive & Carry Over"
     },
   };
 

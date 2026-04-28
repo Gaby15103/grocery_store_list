@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:frontend/utils.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
@@ -11,6 +11,7 @@ import '../models/user.dart';
 import '../models/user_profile.dart';
 import '../services/socket_service.dart';
 import '../services/sync_service.dart';
+import '../utils.dart';
 import '../utils/ui_helpers.dart';
 
 class GroceryRepository {
@@ -325,8 +326,9 @@ class GroceryRepository {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  Future<void> createList(String name, String groupId) async {
+  Future<GroceryList?> createList(String name, String groupId) async {
     final id = 'list_${DateTime.now().millisecondsSinceEpoch}';
+
     final newList = GroceryList(
       id: id,
       name: name,
@@ -334,11 +336,17 @@ class GroceryRepository {
       createdAt: DateTime.now(),
     );
 
+    await _listBox.put(id, newList);
+
     if (_shouldSync()) {
-      await _syncService.createListOnServer(newList);
-    } else {
-      await _listBox.put(id, newList);
+      final syncedList = await _syncService.createListOnServer(newList);
+      if (syncedList != null) {
+        await _listBox.put(syncedList.id, syncedList);
+        return syncedList;
+      }
     }
+
+    return newList;
   }
 
   // --- ITEM LOGIC ---
@@ -438,39 +446,37 @@ class GroceryRepository {
 
   // --- CARRY OVER / ARCHIVE LOGIC ---
 
-  Future<void> carryOverToNewList(String oldListId, String newListName) async {
+  Future<String?> carryOverToNewList(String oldListId, String newListName) async {
     final oldList = _listBox.get(oldListId);
-    if (oldList == null) return;
+    if (oldList == null) return null;
 
     final groupId = oldList.groupId;
 
-    // Use the existing createList logic which handles the sync check internally
-    await createList(newListName, groupId);
+    final newList = await createList(newListName, groupId);
 
-    // Get the ID of the list we just created (the most recent one)
-    final newListId = getListsForGroup(groupId).first.id;
+    if (newList == null) {
+      debugPrint("Failed to create new list for carry over.");
+      return null;
+    }
+
+    final newListId = newList.id;
 
     final carryOverItems = _itemBox.values
-        .where(
-          (item) =>
-              item.listId == oldListId && item.status == ItemStatus.pending,
-        )
+        .where((item) => item.listId == oldListId && item.status == ItemStatus.pending)
         .toList();
 
     for (var item in carryOverItems) {
-      String? finalImagePath;
-
       final newItem = GroceryItem(
         name: item.name,
-        status: item.status,
-        createdAt: item.createdAt,
+        status: ItemStatus.pending,
+        createdAt: DateTime.now(),
         listId: newListId,
         groupId: groupId,
         note: item.note,
-        imagePath: finalImagePath,
+        imagePath: item.imagePath,
       );
 
-      await _itemBox.put('${newListId}_$item.name', newItem);
+      await _itemBox.put('${newListId}_${newItem.name}', newItem);
 
       if (_shouldSync()) {
         await _syncService.addItemOnServer(newItem);
@@ -480,10 +486,11 @@ class GroceryRepository {
     oldList.isArchived = true;
     await oldList.save();
 
-    // Optional: Update archive status on server
     if (_shouldSync()) {
       await _syncService.archiveListOnServer(oldListId);
     }
+
+    return newListId;
   }
 
   Future<void> deleteItem(GroceryItem item) async {

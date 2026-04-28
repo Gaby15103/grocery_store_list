@@ -289,7 +289,7 @@ class SyncService {
 
   // --- LIST SYNC ---
 
-  Future<void> createListOnServer(GroceryList list) async {
+  Future<GroceryList?> createListOnServer(GroceryList list) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/lists'),
@@ -301,10 +301,18 @@ class SyncService {
           'createdAt': list.createdAt.toIso8601String(),
         }),
       );
-      if (response.statusCode != 201) print('List sync failed: ${response.body}');
+      if (response.statusCode == 201) {
+        if (response.body.isNotEmpty) {
+          return GroceryList.fromJson(jsonDecode(response.body));
+        }
+      } else {
+        debugPrint('List sync failed: ${response.statusCode} - ${response.body}');
+      }
     } catch (e) {
-      print('Network error creating list: $e');
+      debugPrint('Network error creating list: $e');
     }
+
+    return null;
   }
 
   Future<void> archiveListOnServer(String listId) async {

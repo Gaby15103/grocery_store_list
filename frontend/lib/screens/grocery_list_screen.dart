@@ -220,6 +220,64 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     );
   }
 
+  void _showCarryOverDialog() {
+    final TextEditingController nameController = TextEditingController(
+      text: "${L10n.of(context, 'groceries')} ${DateTime.now().day}/${DateTime.now().month}",
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(L10n.of(context, 'finish_shopping_title')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(L10n.of(context, 'carry_over_warning')),
+            const SizedBox(height: 15),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: L10n.of(context, 'new_list_name_hint')),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(L10n.of(context, 'cancel'))
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isNotEmpty && widget.sessionId != null) {
+                final String? newListId = await widget.repository.carryOverToNewList(
+                    widget.sessionId!,
+                    newName
+                );
+
+                if (!mounted) return;
+
+                if (newListId != null) {
+                  Navigator.pop(context);
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GroceryListScreen(
+                        repository: widget.repository,
+                        sessionId: newListId,
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(L10n.of(context, 'archive_and_carry')),
+          ),
+        ],
+      ),
+    );
+  }
+
   TextStyle _getItemStyle(ItemStatus status) {
     switch (status) {
       case ItemStatus.bought:
@@ -258,6 +316,13 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     return MainLayout(
       title: L10n.of(context, 'items_title'),
       repository: widget.repository,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.archive_outlined),
+          tooltip: "Finish & Carry Over",
+          onPressed: _showCarryOverDialog,
+        ),
+      ],
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
         child: const Icon(Icons.add_shopping_cart),
