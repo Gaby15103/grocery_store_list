@@ -12,7 +12,7 @@ class MainLayout extends StatelessWidget {
   final GroceryRepository repository;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-
+  final bool showBackButton;
 
   const MainLayout({
     super.key,
@@ -21,6 +21,7 @@ class MainLayout extends StatelessWidget {
     required this.repository,
     this.actions,
     this.floatingActionButton,
+    this.showBackButton = true,
   });
 
 
@@ -325,7 +326,7 @@ class MainLayout extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
           title: Text(activeGroup.id.isNotEmpty ? activeGroup.name : title),
-        leading: Navigator.canPop(context)
+        leading: (showBackButton && Navigator.canPop(context))
             ? IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -341,7 +342,7 @@ class MainLayout extends StatelessWidget {
               tooltip: activeGroup.isShared ? 'Invite People' : 'Share Group',
               onPressed: () => _handleShareAction(context, activeGroup, activeGroupId),
             ),
-          ...?actions, // Keep your other actions
+          ...?actions,
         ],
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),

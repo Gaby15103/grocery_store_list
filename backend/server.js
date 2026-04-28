@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const morgan = require('morgan');
+const path = require('path');
 const { sequelize } = require('./models');
 const { initSockets } = require('./sockets');
 
@@ -10,8 +11,10 @@ const server = http.createServer(app);
 const io = initSockets(server);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
+
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Logger Middleware (Customized from your old one)
 app.use((req, res, next) => {
@@ -30,6 +33,7 @@ app.use('/groups', require('./routes/groupRoutes'));
 app.use('/items', require('./routes/itemRoutes'));
 app.use('/lists', require('./routes/listRoutes'));
 app.use('/users', require('./routes/userRoutes'));
+app.use('/upload', require('./routes/uploadRoutes'));
 
 const PORT = process.env.PORT || 3000;
 

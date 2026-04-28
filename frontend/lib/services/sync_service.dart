@@ -15,6 +15,36 @@ class SyncService {
 
   String get baseUrl => AppConfig.apiUrl;
 
+  Future<String?> uploadFile(File file) async {
+    try {
+      final uri = Uri.parse('$baseUrl/upload');
+      var request = http.MultipartRequest('POST', uri);
+
+      request.headers.addAll(await _headers);
+
+      final extension = file.path.split('.').last.toLowerCase();
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        contentType: http.MediaType('image', extension == 'png' ? 'png' : 'jpeg'),
+      ));
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['path'];
+      } else {
+        print('Upload failed: ${response.body}');
+      }
+    } catch (e) {
+      print('Error uploading file: $e');
+    }
+    return null;
+  }
+
   // --- USER SYNC ---
 
   Future<Map<String, String>> get _headers async {
@@ -205,20 +235,7 @@ class SyncService {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => GroceryItem(
-          // Use ?? to provide defaults if the DB has nulls
-            name: json['name'] ?? 'Unknown Item',
-            status: ItemStatus.values.firstWhere(
-                    (e) => e.name == json['status'],
-                orElse: () => ItemStatus.pending
-            ),
-            // Check if createdAt exists before parsing
-            createdAt: json['createdAt'] != null
-                ? DateTime.parse(json['createdAt'])
-                : DateTime.now(),
-            listId: json['listId'] ?? id, // Fallback to the ID passed in
-            groupId: json['groupId'] ?? '' // Ensure this isn't null
-        )).toList();
+        return data.map((json) => GroceryItem.fromJson(json)).toList();
       }
     } catch (e) {
       print('Failed to fetch items: $e');
@@ -308,13 +325,15 @@ class SyncService {
     try {
       await http.post(
         Uri.parse('$baseUrl/items'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _headers,
         body: jsonEncode({
           'name': item.name,
           'status': item.status.name,
           'listId': item.listId,
           'groupId': item.groupId,
           'createdAt': item.createdAt.toIso8601String(),
+          'note': item.note,
+          'imagePath': item.imagePath,
         }),
       );
     } catch (e) {
@@ -324,8 +343,6 @@ class SyncService {
 
   Future<void> updateItemOnServer(GroceryItem item, String groupId) async {
     try {
-      // Assuming your backend uses the combination of name and listId to find the item
-      // or you've added a unique ID to the Item model.
       await http.put(
         Uri.parse('$baseUrl/items/update'),
         headers: {'Content-Type': 'application/json'},
@@ -334,6 +351,8 @@ class SyncService {
           'listId': item.listId,
           'status': item.status.name,
           'groupId': groupId,
+          'note': item.note,
+          'imagePath': item.imagePath,
         }),
       );
     } catch (e) {

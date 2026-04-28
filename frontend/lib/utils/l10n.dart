@@ -106,6 +106,13 @@ class L10n {
       'language_label': 'Langue de l\'application',
       'lang_fr': 'Français',
       'lang_en': 'English',
+
+      'add_note': 'Ajouter une note',
+      'note_hint': 'Note (ex: Prendre la marque maison)',
+      'take_photo': 'Prendre une photo',
+      'select_photo': 'Choisir une photo',
+      'item_details': 'Détails de l\'article',
+      'details': 'Details',
     },
     'en': {
       // Home Screen
@@ -211,6 +218,13 @@ class L10n {
       'language_label': 'App Language',
       'lang_fr': 'Français',
       'lang_en': 'English',
+
+      'add_note': 'Add a note',
+      'note_hint': 'Note (e.g., Get the store brand)',
+      'take_photo': 'Take a photo',
+      'select_photo': 'Select photo',
+      'item_details': 'Item Details',
+      'details': 'Details',
     },
   };
 
