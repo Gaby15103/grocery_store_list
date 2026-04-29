@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -25,26 +26,61 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await AppConfig.init();
-  await dotenv.load();
+
+  // Safe dotenv load - ignore error if .env is missing in web assets
+  try {
+    await dotenv.load();
+  } catch (e) {
+    debugPrint("Dotenv load failed: $e");
+  }
+
   await Hive.initFlutter();
 
-  // Initial boot check for Notification Channel localization
-  final box = await Hive.openBox<String>('metadata');
-  final savedLang = box.get('language') ?? WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-  final bool isFrench = savedLang == 'fr';
-
-  await NotificationService.init(
-    channelName: isFrench ? 'Mises à jour des courses' : 'Grocery Updates',
-    channelDesc: isFrench
-        ? 'Notifications pour les changements dans les listes'
-        : 'Notifications for grocery list changes',
-  );
-
+  // Register adapters early
   Hive.registerAdapter(ItemStatusAdapter());
   Hive.registerAdapter(GroceryItemAdapter());
   Hive.registerAdapter(GroceryGroupAdapter());
   Hive.registerAdapter(GroceryListAdapter());
 
+  // Open metadata first to check language
+  final box = await Hive.openBox<String>('metadata');
+  final savedLang = box.get('language') ?? WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+  final bool isFrench = savedLang == 'fr';
+
+  // Only init Mobile-specific services
+  if (!kIsWeb) {
+    await NotificationService.init(
+      channelName: isFrench ? 'Mises à jour des courses' : 'Grocery Updates',
+      channelDesc: isFrench
+          ? 'Notifications pour les changements dans les listes'
+          : 'Notifications for grocery list changes',
+    );
+
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'grocery_sync_service',
+        channelName: 'Grocery Master Sync',
+        channelDescription: 'Maintains connection for real-time updates.',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(),
+      foregroundTaskOptions: const ForegroundTaskOptions(
+        interval: 5000,
+        isOnceEvent: false,
+        autoRunOnBoot: true,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+
+    NotificationPermission notificationPermission = await FlutterForegroundTask.checkNotificationPermission();
+    if (notificationPermission != NotificationPermission.granted) {
+      await FlutterForegroundTask.requestNotificationPermission();
+    }
+  }
+
+  // Open data boxes
   await Future.wait([
     Hive.openBox<GroceryGroup>('groups'),
     Hive.openBox<GroceryItem>('items'),
@@ -53,30 +89,6 @@ void main() async {
 
   final repository = GroceryRepository();
   await repository.initialize();
-
-  // Foreground service config
-  FlutterForegroundTask.init(
-    androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'grocery_sync_service',
-      channelName: 'Grocery Master Sync',
-      channelDescription: 'Maintains connection for real-time updates.',
-      channelImportance: NotificationChannelImportance.LOW,
-      priority: NotificationPriority.LOW,
-    ),
-    iosNotificationOptions: const IOSNotificationOptions(),
-    foregroundTaskOptions: const ForegroundTaskOptions(
-      interval: 5000,
-      isOnceEvent: false,
-      autoRunOnBoot: true,
-      allowWakeLock: true,
-      allowWifiLock: true,
-    ),
-  );
-
-  NotificationPermission notificationPermission = await FlutterForegroundTask.checkNotificationPermission();
-  if (notificationPermission != NotificationPermission.granted) {
-    await FlutterForegroundTask.requestNotificationPermission();
-  }
 
   final socketService = SocketService(repository);
 
@@ -103,7 +115,10 @@ class _GroceryAppState extends State<GroceryApp> {
   void initState() {
     super.initState();
     _setupGlobalListeners();
-    _setupNotificationTapHandler();
+    // Tap handler is only useful if notifications actually work (Mobile)
+    if (!kIsWeb) {
+      _setupNotificationTapHandler();
+    }
   }
 
   void _setupNotificationTapHandler() {
@@ -125,8 +140,8 @@ class _GroceryAppState extends State<GroceryApp> {
   void _setupGlobalListeners() {
     widget.repository.initSocketListener(widget.socketService.eventStream);
 
-    // Foreground task setup
-    if (!_isSocketInitialized) {
+    // Foreground service setup - Mobile Only
+    if (!kIsWeb && !_isSocketInitialized) {
       FlutterForegroundTask.startService(
         notificationTitle: 'Grocery Master',
         notificationText: 'Sync service is active',
@@ -134,12 +149,13 @@ class _GroceryAppState extends State<GroceryApp> {
     }
 
     widget.socketService.eventStream.listen((event) {
+      if (kIsWeb) return; // Skip phone notifications on web browser
+
       final String? incomingListId = event.data['listId'] ?? event.data['ListId'];
       final String? activeListId = widget.repository.currentOpenedListId;
 
       if (incomingListId != null && incomingListId == activeListId) return;
 
-      // Handle translation for notifications
       final lang = Hive.box<String>('metadata').get('language', defaultValue: 'fr');
 
       if (event.type == 'item_added') {
@@ -167,7 +183,6 @@ class _GroceryAppState extends State<GroceryApp> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      // CRITICAL: Listen to both theme and language changes
       valueListenable: Hive.box<String>('metadata').listenable(),
       builder: (context, Box<String> box, _) {
         final String? userEmail = box.get('userEmail');
@@ -178,7 +193,6 @@ class _GroceryAppState extends State<GroceryApp> {
           _isSocketInitialized = true;
         }
 
-        // Theme Logic
         final String themeModePref = box.get('themeMode') ?? 'system';
         ThemeMode currentThemeMode = themeModePref == 'dark'
             ? ThemeMode.dark
@@ -192,8 +206,6 @@ class _GroceryAppState extends State<GroceryApp> {
           scaffoldMessengerKey: scaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
           title: 'Grocery Master',
-
-          // Localization
           locale: Locale(language),
           supportedLocales: const [Locale('fr'), Locale('en')],
           localizationsDelegates: const [
@@ -201,15 +213,12 @@ class _GroceryAppState extends State<GroceryApp> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-
           themeMode: currentThemeMode,
           theme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.light),
           darkTheme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.dark),
-
           home: userEmail == null
               ? SetupScreen(repository: widget.repository, onComplete: () => setState(() {}))
               : HomeScreen(repository: widget.repository),
-
           routes: {
             '/settings': (context) => SettingsScreen(repository: widget.repository),
             '/home': (context) => HomeScreen(repository: widget.repository),
