@@ -7,12 +7,12 @@ class AppConfig {
 
   static Future<void> init() async {
     if (kIsWeb) {
-      apiUrl = kReleaseMode ? "https://api-grocery.gaby15103.org" : "http://localhost:3000";
+      apiUrl = kReleaseMode ? "https://apigrocery.gaby15103.org" : "http://localhost:3000";
       return;
     }
 
     if (kReleaseMode) {
-      apiUrl = "https://api-grocery.gaby15103.org";
+      apiUrl = "https://apigrocery.gaby15103.org";
       return;
     }
 
@@ -21,7 +21,7 @@ class AppConfig {
       AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
 
       if (androidInfo.isPhysicalDevice) {
-        apiUrl = "https://api-grocery.gaby15103.org";
+        apiUrl = "https://apigrocery.gaby15103.org";
       } else {
         apiUrl = "http://10.0.2.2:3000";
       }
