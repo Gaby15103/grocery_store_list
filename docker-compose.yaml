@@ -20,5 +20,14 @@
     depends_on:
       - postgres
 
+  frontend:
+    build: ./frontend
+    container_name: grocery_frontend
+    restart: always
+    ports:
+      - '8083:80'
+    depends_on:
+      - backend
+
 volumes:
   postgresDb:
