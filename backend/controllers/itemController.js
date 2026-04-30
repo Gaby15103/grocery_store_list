@@ -14,13 +14,13 @@ exports.getListsByGroup = async (req, res) => {
 };
 
 exports.deleteList = async (req, res) => {
-    const { id } = req.params;
+    const { id: listId } = req.params;
     const email = req.headers['x-user-email'];
 
     if (!email) return res.status(400).send("Email header missing");
 
     try {
-        const list = await List.findOne({ where: { id } });
+        const list = await List.findOne({ where: { id: listId } });
         if (!list) return res.status(404).send("List not found");
 
         const user = await User.findOne({ where: { email } });
