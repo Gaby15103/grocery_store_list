@@ -11,3 +11,8 @@ docker-compose build --no-cache && docker-compose up -d
 ```bash
 export $(grep -v '^#' .env | xargs) && flutter run --release -d $DEVICE_ID
 ```
+
+## when updating models
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```

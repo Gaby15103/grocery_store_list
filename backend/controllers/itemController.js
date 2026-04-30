@@ -13,6 +13,41 @@ exports.getListsByGroup = async (req, res) => {
     res.json(lists);
 };
 
+exports.deleteList = async (req, res) => {
+    const { id } = req.params;
+    const email = req.headers['x-user-email'];
+
+    if (!email) return res.status(400).send("Email header missing");
+
+    try {
+        const list = await List.findOne({ where: { id } });
+        if (!list) return res.status(404).send("List not found");
+
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.status(404).send("User not found");
+
+        const group = await Group.findOne({ where: { id: list.groupId } });
+        if (group.ownerId !== user.id) {
+            return res.status(403).send("Only the group owner can delete lists.");
+        }
+
+        await List.destroy({ where: { id: list.id } });
+
+        req.io.to(list.groupId).emit('notification', {
+            type: 'list_deleted',
+            listId: list.id,
+            groupId: list.groupId,
+            title: 'List Removed',
+            message: `${user.firstName || 'A user'} deleted the list "${list.name}".`,
+            data: { name: list.name, id: list.id }
+        });
+        res.status(204).send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).send(err.message);
+    }
+};
+
 exports.getListItems = async (req, res) => {
     try {
         const items = await Item.findAll({ where: { ListId: req.params.listId }, order: [['createdAt', 'ASC']] });

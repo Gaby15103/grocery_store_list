@@ -369,6 +369,22 @@ class GroceryRepository {
     return newList;
   }
 
+  Future<void> deleteList(String listId) async {
+    // 1. Sync with API
+    await _syncService.deleteList(listId);
+
+    // 2. Local Cleanup
+    final listBox = Hive.box<GroceryList>('lists');
+    await listBox.delete(listId);
+
+    // 3. Clean up items belonging to this list
+    final itemBox = Hive.box<GroceryItem>('items');
+    final itemsToDelete = itemBox.values.where((item) => item.listId == listId).map((e) => e.id);
+    for (var id in itemsToDelete) {
+      await itemBox.delete(id);
+    }
+  }
+
   // --- ITEM LOGIC ---
 
   Future<List<GroceryItem>> getItemsForList(String listId) async {

@@ -276,9 +276,26 @@ class SyncService {
     return [];
   }
 
+  Future<void> deleteList(String listId) async {
+    final url = Uri.parse("$baseUrl/lists/$listId");
+    try {
+      final response = await http.delete(
+        url,
+        headers: await _headers
+      );
+      if (response.statusCode == 403 || response.statusCode == 401) {
+        throw Exception("Unauthorized: You cannot delete this list.");
+      } else if (response.statusCode >= 400 && response.statusCode != 404) {
+        throw Exception("Server error: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Sync Error: $e");
+      rethrow;
+    }
+  }
+
   Future<void> createGroupOnServer(GroceryGroup group) async {
     try {
-      // We use 'await _headers' to include the email for the ownership logic
       final response = await http.post(
         Uri.parse('$baseUrl/groups'),
         headers: await _headers,

@@ -118,7 +118,12 @@ class L10n {
       "finish_shopping_title": "Terminer les courses?",
       "carry_over_warning": "Les articles restants iront dans une nouvelle liste et celle-ci sera archivée.",
       "new_list_name_hint": "Nom de la nouvelle liste",
-      "archive_and_carry": "Archiver et Continuer"
+      "archive_and_carry": "Archiver et Continuer",
+
+      "delete_group_title": "Supprimer le groupe",
+      "delete_group_warning": "Êtes-vous sûr ? Cela supprimera toutes les listes de ce groupe.",
+      "delete_group_tooltip": "Supprimer ce groupe",
+      "unauthorized_delete": "Vous n'êtes pas le propriétaire de ce groupe."
     },
     'en': {
       // Home Screen
@@ -236,7 +241,12 @@ class L10n {
       "finish_shopping_title": "Finish Weekly Shopping?",
       "carry_over_warning": "Pending items will move to a new list and this one will be archived.",
       "new_list_name_hint": "New List Name",
-      "archive_and_carry": "Archive & Carry Over"
+      "archive_and_carry": "Archive & Carry Over",
+
+      "delete_group_title": "Delete Group",
+      "delete_group_warning": "Are you sure? This will delete all lists in this group.",
+      "delete_group_tooltip": "Delete this group",
+      "unauthorized_delete": "You are not the owner of this group."
     },
   };
 

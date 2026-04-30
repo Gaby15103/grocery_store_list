@@ -16,13 +16,11 @@ class GroceryItem extends HiveObject {
   @HiveField(2) DateTime createdAt;
   @HiveField(3) String listId;
   @HiveField(4) String groupId;
-
   @HiveField(5) String? addedBy;
   @HiveField(6) String? modifiedBy;
-
-  // --- NEW FIELDS ---
-  @HiveField(7) String? note;      // For the item note
-  @HiveField(8) String? imagePath; // For the server-side image path
+  @HiveField(7) String? note;
+  @HiveField(8) String? imagePath;
+  @HiveField(9) String? id;
 
   GroceryItem({
     required this.name,
@@ -32,8 +30,9 @@ class GroceryItem extends HiveObject {
     required this.groupId,
     this.addedBy,
     this.modifiedBy,
-    this.note,       // Added
-    this.imagePath,  // Added
+    this.note,
+    this.imagePath,
+    this.id,
   });
 
   Map<String, dynamic> toJson() => {
@@ -42,19 +41,21 @@ class GroceryItem extends HiveObject {
     'createdAt': createdAt.toIso8601String(),
     'listId': listId,
     'groupId': groupId,
-    'note': note,           // Added to JSON
-    'imagePath': imagePath, // Added to JSON
+    'note': note,
+    'imagePath': imagePath,
+    'id': id
   };
 
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
     return GroceryItem(
+      id: json['id'],
       name: json['name'],
       listId: json['ListId'] ?? json['listId'],
       groupId: json['groupId'] ?? '',
       status: _statusFromString(json['status']),
       createdAt: DateTime.parse(json['createdAt']),
-      note: json['note'],           // Added from JSON
-      imagePath: json['imagePath'], // Added from JSON
+      note: json['note'],
+      imagePath: json['imagePath'],
       addedBy: json['addedBy'],
       modifiedBy: json['modifiedBy'],
     );

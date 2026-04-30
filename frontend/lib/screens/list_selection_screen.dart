@@ -64,18 +64,57 @@ class ListSelectionScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
-              // 1. Call your repository delete method
-              await repository.deleteGroup(groupId);
-
-              if (context.mounted) {
-                // 2. Close dialog
-                Navigator.pop(ctx);
-                // 3. Go back to the previous screen (Group selection)
-                Navigator.pop(context);
+              try {
+                await repository.deleteGroup(groupId);
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(L10n.of(context, 'unauthorized_delete'))),
+                  );
+                  Navigator.pop(ctx);
+                }
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(L10n.of(context, 'delete') ?? 'Delete'),
+            child: Text(L10n.of(context, 'delete')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteList(BuildContext context, GroceryList list) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(L10n.of(context, 'delete_list_title') ?? 'Delete List'),
+        content: Text(L10n.of(context, 'delete_list_warning') ?? 'Delete this list?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(L10n.of(context, 'cancel')),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                // Ensure your repository has a deleteList method
+                await repository.deleteList(list.id);
+                if (context.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(L10n.of(context, 'unauthorized_list_delete'))),
+                  );
+                  Navigator.pop(ctx);
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(L10n.of(context, 'delete')),
           ),
         ],
       ),
@@ -139,6 +178,7 @@ class ListSelectionScreen extends StatelessWidget {
                   ),
                   subtitle: Text("${L10n.of(context, 'created_on')} $dateStr"),
                   trailing: const Icon(Icons.chevron_right),
+                  onLongPress: () => _confirmDeleteList(context, groceryList),
                   onTap: () {
                     Navigator.push(
                       context,
