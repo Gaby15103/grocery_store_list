@@ -226,6 +226,17 @@ class SyncService {
     return [];
   }
 
+  Future<void> deleteGroup(String groupId) async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/groups/$groupId"),
+      headers: await _headers,
+    );
+
+    if (response.statusCode >= 400 && response.statusCode != 404) {
+      throw Exception("Server delete failed: ${response.statusCode}");
+    }
+  }
+
   Future<List<GroceryItem>> fetchItemFromList(String id) async {
     try {
       final response = await http.get(

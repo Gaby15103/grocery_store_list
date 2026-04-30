@@ -23,6 +23,40 @@ exports.createGroup = async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
+exports.deleteGroup = async (req, res) => {
+    const { id } = req.params;
+    const email = req.headers['x-user-email'];
+
+    if (!email) return res.status(400).send("Email header missing");
+
+    try {
+        const group = await Group.findOne({ where: { id } });
+        if (!group) return res.status(404).send("Group not found");
+
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.status(404).send("User not found");
+
+        if (group.ownerId !== user.id) {
+            return res.status(403).send("User not authorized to delete this group.");
+        }
+
+        await Group.destroy({ where: { id: group.id } });
+
+        req.io.to(group.id).emit('notification', {
+            type: 'group_deleted',
+            groupId: group.id,
+            title: 'Group Deleted',
+            message: `${user.firstName || 'The owner'} deleted the group "${group.name}".`,
+            data: { name: group.name, id: group.id }
+        });
+
+        res.status(204).send();
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+}
+
 exports.inviteUser = async (req, res) => {
     const { email } = req.body;
     try {

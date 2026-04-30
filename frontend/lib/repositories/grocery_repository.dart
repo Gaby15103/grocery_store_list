@@ -317,6 +317,26 @@ class GroceryRepository {
     }
   }
 
+  Future<void> deleteGroup(String id) async {
+    try {
+      await _syncService.deleteGroup(id);
+    } catch (e) {
+      debugPrint("Sync failed, but proceeding with local delete: $e");
+    }
+
+    await Hive.box<GroceryGroup>('groups').delete(id);
+
+    final listBox = Hive.box<GroceryList>('lists');
+    final listsToRemove = listBox.values
+        .where((l) => l.groupId == id)
+        .toList();
+
+    for (var list in listsToRemove) {
+
+      await listBox.delete(list.id);
+    }
+  }
+
   // --- LIST LOGIC ---
 
   List<GroceryList> getListsForGroup(String groupId) {

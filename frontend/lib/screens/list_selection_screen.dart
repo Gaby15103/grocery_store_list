@@ -50,11 +50,50 @@ class ListSelectionScreen extends StatelessWidget {
     );
   }
 
+  void _confirmDeleteGroup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(L10n.of(context, 'delete_group_title') ?? 'Delete Group'),
+        content: Text(L10n.of(context, 'delete_group_warning') ??
+            'Are you sure? This will delete all lists in this group.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(L10n.of(context, 'cancel')),
+          ),
+          TextButton(
+            onPressed: () async {
+              // 1. Call your repository delete method
+              await repository.deleteGroup(groupId);
+
+              if (context.mounted) {
+                // 2. Close dialog
+                Navigator.pop(ctx);
+                // 3. Go back to the previous screen (Group selection)
+                Navigator.pop(context);
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(L10n.of(context, 'delete') ?? 'Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MainLayout(
       title: L10n.of(context, 'my_lists'),
       repository: repository,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+          onPressed: () => _confirmDeleteGroup(context),
+          tooltip: L10n.of(context, 'delete_group_tooltip') ?? 'Delete Group',
+        ),
+      ],
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateListDialog(context),
         tooltip: L10n.of(context, 'add_list_tooltip'),
