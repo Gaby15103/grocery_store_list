@@ -16,7 +16,6 @@ exports.getListsByGroup = async (req, res) => {
 exports.deleteList = async (req, res) => {
     const { listId } = req.params;
     const email = req.headers['x-user-email'];
-    https://grocery.gaby15103.org/
     if (!email) return res.status(400).send("Email header missing");
 
     try {

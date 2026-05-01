@@ -50,15 +50,17 @@ const Item = sequelize.define('Item', {
 
 
 // Relationships
-Group.hasMany(List, {onDelete: 'CASCADE' });
-List.belongsTo(Group);
-List.hasMany(Item, {onDelete: 'CASCADE' });
-Item.belongsTo(List);
+Group.hasMany(List, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
+List.belongsTo(Group, { foreignKey: 'GroupId' });
+
+List.hasMany(Item, { onDelete: 'CASCADE', foreignKey: 'ListId' });
+Item.belongsTo(List, { foreignKey: 'ListId' });
 
 User.belongsToMany(Group, { through: UserGroup });
-Group.belongsToMany(User, { through: UserGroup });
+Group.belongsToMany(User, { through: UserGroup, onDelete: 'CASCADE' });
 
 UserGroup.belongsTo(User);
-UserGroup.belongsTo(Group);
+UserGroup.belongsTo(Group, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
+Group.hasMany(UserGroup, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
 
 module.exports = { Group, List, Item, User, UserGroup, sequelize, Op };
