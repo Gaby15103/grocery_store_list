@@ -21,26 +21,32 @@ jobs:
         working-directory: frontend 
         run: |
           flutter pub get
+          # Note: Avoid comments in JSON if your build_runner config uses it
           flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: 🍏 Install Pods
         working-directory: frontend/ios
         run: pod install --repo-update
 
-      - name: 🆔 Bypass Team ID Requirement
-        # This tricks Xcode into thinking a team is assigned so it doesn't fail the build
+      - name: 🆔 Force Disable Code Signing
+        # This replaces the Team ID and explicitly tells Xcode signing is NOT required
         working-directory: frontend/ios
         run: |
-          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "1234567890";/g' Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "-";/g' Runner.xcodeproj/project.pbxproj
+          echo "CODE_SIGNING_ALLOWED = NO" >> Runner.xcodeproj/project.pbxproj
+          echo "CODE_SIGNING_REQUIRED = NO" >> Runner.xcodeproj/project.pbxproj
 
       - name: 🛠️ Build iOS (No-Sign)
         working-directory: frontend
-        run: flutter build ipa --release --no-codesign
+        # We build 'ios' instead of 'ipa' here because 'ipa' command 
+        # often enforces signing more strictly than the raw build.
+        run: flutter build ios --release --no-codesign
 
       - name: 🏗️ Create IPA Structure
+        working-directory: frontend/build/ios/iphoneos
         run: |
-          # Using the correct path for physical device builds
-          cd frontend/build/ios/iphoneos
           mkdir Payload
           cp -r Runner.app Payload/
           zip -qq -r -9 GroceryApp.ipa Payload
@@ -53,4 +59,4 @@ jobs:
           asset_name: GroceryApp-Unsigned.ipa
           tag: v1.0.0
           overwrite: true
-          body: "Automated iOS build. This IPA is unsigned and must be sideloaded (AltStore/Sideloadly)."
+          body: "Automated iOS build for grocery_store_list. This IPA is unsigned."
