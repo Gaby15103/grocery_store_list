@@ -28,11 +28,10 @@ jobs:
         working-directory: frontend/ios
         run: pod install --repo-update
 
-      - name: 🛠️ Build iOS (Unsigned)
+      - name: 🛠️ Build iOS (Aggressive No-Sign)
         working-directory: frontend
         run: |
-          # We use --no-codesign because GitHub runners don't have your Apple certs
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --code-sign-identity="" --code-signing-required=NO --code-signing-allowed=NO
 
       - name: 🏗️ Create IPA Structure
         run: |
