@@ -108,16 +108,32 @@ class GroceryApp extends StatefulWidget {
   State<GroceryApp> createState() => _GroceryAppState();
 }
 
-class _GroceryAppState extends State<GroceryApp> {
+class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   bool _isSocketInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _setupGlobalListeners();
-    // Tap handler is only useful if notifications actually work (Mobile)
+    WidgetsBinding.instance.addObserver(this);
+    _syncData();
     if (!kIsWeb) {
       _setupNotificationTapHandler();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      widget.repository.initialize();
+    }
+  }
+
+  Future<void> _syncData() async {
+    try {
+      await widget.repository.initialize();
+    } catch (e) {
+      debugPrint("Background sync failed: $e");
     }
   }
 
