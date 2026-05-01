@@ -18,7 +18,6 @@ jobs:
           channel: 'stable'
 
       - name: 📦 Install Dependencies
-        # If your flutter folder isn't named 'frontend', change this:
         working-directory: frontend 
         run: |
           flutter pub get
@@ -28,34 +27,33 @@ jobs:
         working-directory: frontend/ios
         run: pod install --repo-update
 
-      - name: 🛠️ Build iOS (Aggressive No-Sign)
+      - name: 🆔 Bypass Team ID Requirement
+        # This tricks Xcode into thinking a team is assigned so it doesn't fail the build
+        working-directory: frontend/ios
+        run: |
+          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "1234567890";/g' Runner.xcodeproj/project.pbxproj
+
+      - name: 🛠️ Build iOS (No-Sign)
         working-directory: frontend
         run: |
-          flutter build ios --release --simulator
+          # We build for 'ios' (physical) but disable signing 
+          # to ensure the output goes to build/ios/iphoneos
+          flutter build ios --release --no-codesign
 
       - name: 🏗️ Create IPA Structure
         run: |
-          # 1. Navigate to the build output inside the frontend folder
+          # Using the correct path for physical device builds
           cd frontend/build/ios/iphoneos
-          
-          # 2. Create the Payload folder required for .ipa files
           mkdir Payload
-          
-          # 3. Copy the .app bundle into Payload
           cp -r Runner.app Payload/
-          
-          # 4. Zip it up into an IPA
           zip -qq -r -9 GroceryApp.ipa Payload
           
-          echo "IPA created at: $(pwd)/GroceryApp.ipa"
-
       - name: 🚀 Upload to GitHub Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          # Path must include the frontend prefix
           file: frontend/build/ios/iphoneos/GroceryApp.ipa
           asset_name: GroceryApp-Unsigned.ipa
           tag: v1.0.0
           overwrite: true
-          body: "Automated iOS build for the Grocery Sync App (Frontend). This IPA is unsigned and must be sideloaded (AltStore/Sideloadly)."
+          body: "Automated iOS build. This IPA is unsigned and must be sideloaded (AltStore/Sideloadly)."
