@@ -35,10 +35,7 @@ jobs:
 
       - name: 🛠️ Build iOS (No-Sign)
         working-directory: frontend
-        run: |
-          # We build for 'ios' (physical) but disable signing 
-          # to ensure the output goes to build/ios/iphoneos
-          flutter build ios --release --no-codesign
+        run: flutter build ipa --release --no-codesign
 
       - name: 🏗️ Create IPA Structure
         run: |
