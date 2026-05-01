@@ -25,10 +25,8 @@ exports.deleteList = async (req, res) => {
 
         const user = await User.findOne({ where: { email } });
         if (!user) return res.status(404).send("User not found");
-
         const group = await Group.findOne({ where: { id: list.GroupId } });
-	console.log("owner id:" + group.ownerId + "\n user id :" + user.id) 
-	if (group.ownerId !== user.id) {
+        if (group.ownerId !== user.id) {
             return res.status(403).send("Only the group owner can delete lists.");
         }
 

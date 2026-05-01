@@ -246,7 +246,7 @@ class L10n {
       "delete_group_title": "Delete Group",
       "delete_group_warning": "Are you sure? This will delete all lists in this group.",
       "delete_group_tooltip": "Delete this group",
-      "unauthorized_delete": "You are not the owner of this group."
+      "unauthorized_delete": "You are not the owner of this group.",
     },
   };
 
