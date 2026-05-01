@@ -19,7 +19,7 @@ exports.deleteList = async (req, res) => {
     https://grocery.gaby15103.org/
     if (!email) return res.status(400).send("Email header missing");
 
-    try {https://github.com/settings/profile
+    try {
         const list = await List.findOne({ where: { id: listId } });
         if (!list) return res.status(404).send("List not found");
 
