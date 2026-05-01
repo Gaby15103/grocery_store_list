@@ -123,7 +123,11 @@ class L10n {
       "delete_group_title": "Supprimer le groupe",
       "delete_group_warning": "Êtes-vous sûr ? Cela supprimera toutes les listes de ce groupe.",
       "delete_group_tooltip": "Supprimer ce groupe",
-      "unauthorized_delete": "Vous n'êtes pas le propriétaire de ce groupe."
+      "unauthorized_delete": "Vous n'êtes pas le propriétaire de ce groupe.",
+
+      "delete_list_title": "Supprimer la liste",
+      "delete_list_warning": "Êtes-vous sûr de vouloir supprimer cette liste ? Cette action est irréversible.",
+      "unauthorized_list_delete": "Vous n'avez pas l'autorisation de supprimer cette liste."
     },
     'en': {
       // Home Screen
@@ -247,6 +251,10 @@ class L10n {
       "delete_group_warning": "Are you sure? This will delete all lists in this group.",
       "delete_group_tooltip": "Delete this group",
       "unauthorized_delete": "You are not the owner of this group.",
+
+      "delete_list_title": "Delete List",
+      "delete_list_warning": "Are you sure you want to delete this list? This action cannot be undone.",
+      "unauthorized_list_delete": "You do not have permission to delete this list."
     },
   };
 

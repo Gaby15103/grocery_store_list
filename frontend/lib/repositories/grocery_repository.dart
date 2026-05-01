@@ -34,6 +34,12 @@ class GroceryRepository {
         case 'item_deleted':
           handleSocketItemDeleted(event.data);
           break;
+        case 'list_deleted':
+          handleSocketListDeleted(event.data);
+          break;
+        case 'group_deleted':
+          handleSocketGroupDeleted(event.data);
+          break;
         case 'force_refresh':
           initialize();
           break;
@@ -53,19 +59,29 @@ class GroceryRepository {
 
   Future<void> initialize() async {
     final email = getUserEmail();
-    print(email);
-
     if (email != null) {
       await syncUserToServer();
 
       final remoteGroups = await _syncService.fetchGroupsFromServer();
+
+      final remoteIds = remoteGroups.map((g) => g.id).toSet();
+
+      final localGroupKeys = _groupBox.keys.cast<String>().toList();
+      for (var id in localGroupKeys) {
+        if (!remoteIds.contains(id)) {
+          await _groupBox.delete(id);
+          final orphanedLists = _listBox.values.where((l) => l.groupId == id).toList();
+          for (var list in orphanedLists) {
+            await _listBox.delete(list.id);
+          }
+        }
+      }
 
       for (var group in remoteGroups) {
         await _groupBox.put(group.id, group);
       }
     }
 
-    // 3. Ensure we have an active group selected
     if (getActiveGroupId() == 'default' && _groupBox.isNotEmpty) {
       await setActiveGroup(_groupBox.keys.first);
     }
@@ -138,6 +154,26 @@ class GroceryRepository {
 
   void handleSocketItemDeleted(Map<String, dynamic> data) {
     _itemBox.delete('${data['listId']}_${data['name']}');
+  }
+  void handleSocketListDeleted(Map<String, dynamic> data) {
+    final String listId = data['listId'];
+    _listBox.delete(listId);
+
+    final itemsToDelete = _itemBox.values
+        .where((item) => item.listId == listId)
+        .map((e) => '${e.listId}_${e.name}');
+
+    for (var key in itemsToDelete) {
+      _itemBox.delete(key);
+    }
+  }
+  void handleSocketGroupDeleted(Map<String, dynamic> data) {
+    final String groupId = data['groupId'];
+    _groupBox.delete(groupId);
+
+    if (getActiveGroupId() == groupId) {
+      _metaBox.put('activeGroupId', 'default');
+    }
   }
 
   /// Helper to map socket strings to your Enum
@@ -310,7 +346,20 @@ class GroceryRepository {
     final group = _groupBox.get(groupId);
     if (group != null && group.isShared) {
       final remoteLists = await _syncService.fetchListsFromServer(groupId);
+      final remoteIds = remoteLists.map((l) => l.id).toSet();
 
+      final localListsForGroup = _listBox.values.where((l) => l.groupId == groupId).toList();
+      for (var list in localListsForGroup) {
+        if (!remoteIds.contains(list.id)) {
+          await _listBox.delete(list.id);
+          final items = _itemBox.values.where((i) => i.listId == list.id).toList();
+          for (var item in items) {
+            await _itemBox.delete('${item.listId}_${item.name}');
+          }
+        }
+      }
+
+      // 2. Update/Put remote lists
       for (var list in remoteLists) {
         await _listBox.put(list.id, list);
       }
