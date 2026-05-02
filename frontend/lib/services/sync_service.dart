@@ -359,7 +359,7 @@ class SyncService {
 
   Future<void> addItemOnServer(GroceryItem item) async {
     try {
-      await http.post(
+      final response = await http.post(
         Uri.parse('$baseUrl/items'),
         headers: await _headers,
         body: jsonEncode({
@@ -372,6 +372,16 @@ class SyncService {
           'imagePath': item.imagePath,
         }),
       );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final String serverId = data['id'].toString();
+
+        item.id = serverId;
+        final itemBox = Hive.box<GroceryItem>('items');
+        await itemBox.put(item.id, item);
+      }
     } catch (e) {
       print('Item sync error: $e');
     }

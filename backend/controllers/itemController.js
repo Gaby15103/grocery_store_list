@@ -103,9 +103,12 @@ exports.updateItem = async (req, res) => {
 
         if (updatedRows > 0 && groupId) {
             req.io.to(groupId).emit('item_updated', {
+                id: id,
                 name: name,
                 listId: listId,
-                status: status
+                status: status,
+                note: note,
+                imagePath: imagePath
             });
             if (status === 'bought') {
                 let user = await User.findOne({ email: req.headers['x-user-email'] });
@@ -114,7 +117,7 @@ exports.updateItem = async (req, res) => {
                     listId: listId,
                     title: 'Item Purchased 🛒',
                     message: `${user.firstName || 'Someone'} just bought ${name}!`,
-                    data: { name, listId }
+                    data: { id, name, listId }
                 });
             }
         }
