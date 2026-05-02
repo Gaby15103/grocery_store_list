@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group.dart';
 import '../repositories/grocery_repository.dart';
-import '../screens/sessions_screen.dart';
 import '../screens/list_selection_screen.dart';
+import '../services/socket_service.dart';
 import '../utils/ui_helpers.dart';
 
-class MainLayout extends StatelessWidget {
+class MainLayout extends StatefulWidget {
   final Widget child;
   final String title;
   final GroceryRepository repository;
+  final SocketService socketService;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
   final bool showBackButton;
@@ -19,11 +20,53 @@ class MainLayout extends StatelessWidget {
     required this.child,
     required this.title,
     required this.repository,
+    required this.socketService,
     this.actions,
     this.floatingActionButton,
     this.showBackButton = true,
   });
 
+  @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _syncData(); // Initial cold-start sync
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncData(); // Sync every time the user returns to the app
+    }
+  }
+
+  Future<void> _syncData() async {
+    if (_isSyncing) return;
+    if (mounted) setState(() => _isSyncing = true);
+
+    try {
+      await widget.repository.initialize();
+    } catch (e) {
+      debugPrint("Background Sync failed: $e");
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  // --- RESTORED ORIGINAL METHODS ---
 
   void _showCreateGroupDialog(BuildContext context) {
     final controller = TextEditingController();
@@ -65,30 +108,26 @@ class MainLayout extends StatelessWidget {
           },
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final name = controller.text.trim();
-              final email = repository.getUserEmail();
+              final email = widget.repository.getUserEmail();
 
               if (name.isEmpty) {
                 UIHelpers.showNotification("Please enter a group name");
                 return;
               }
-
-              // Check if user is "connected" before allowing a shared group
               if (isShared && (email == null || email.isEmpty)) {
                 UIHelpers.showNotification("Cannot share group: No account linked.");
                 return;
               }
 
               try {
-                await repository.createGroup(name, isShared: isShared);
-                if (context.mounted) Navigator.pop(ctx);
+                await widget.repository.createGroup(name, isShared: isShared);
+                if (mounted) Navigator.pop(ctx);
                 UIHelpers.showNotification("Group created!", isError: false);
+                _syncData();
               } catch (e) {
                 UIHelpers.showNotification("Failed to create group: $e");
               }
@@ -108,7 +147,7 @@ class MainLayout extends StatelessWidget {
         content: SizedBox(
           width: double.maxFinite,
           child: FutureBuilder<List<dynamic>>(
-            future: repository.getPendingInvitations(),
+            future: widget.repository.getPendingInvitations(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
@@ -131,8 +170,9 @@ class MainLayout extends StatelessWidget {
                     trailing: IconButton(
                       icon: const Icon(Icons.check_circle, color: Colors.green),
                       onPressed: () async {
-                        await repository.acceptInvitation(invite['groupId']);
-                        if (context.mounted) Navigator.pop(ctx);
+                        await widget.repository.acceptInvitation(invite['groupId']);
+                        if (mounted) Navigator.pop(ctx);
+                        _syncData();
                       },
                     ),
                   );
@@ -148,7 +188,7 @@ class MainLayout extends StatelessWidget {
 
   void _showSendInvitationsDialog(BuildContext context, String activeGroupId) {
     final List<String> selectedEmails = [];
-    final TextEditingController manualEmailController = TextEditingController(); // New
+    final TextEditingController manualEmailController = TextEditingController();
     String searchQuery = "";
 
     showDialog(
@@ -163,7 +203,6 @@ class MainLayout extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- NEW: Manual Email Input ---
                     const Text("Invite by Email", style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Row(
@@ -176,23 +215,15 @@ class MainLayout extends StatelessWidget {
                               border: OutlineInputBorder(),
                               contentPadding: EdgeInsets.symmetric(horizontal: 12),
                             ),
-                            onSubmitted: (val) {
-                              if (val.contains('@')) {
-                                setDialogState(() {
-                                  if (!selectedEmails.contains(val)) selectedEmails.add(val);
-                                  manualEmailController.clear();
-                                });
-                              }
-                            },
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.add_circle, color: Colors.blue),
                           onPressed: () {
                             final val = manualEmailController.text.trim();
-                            if (val.contains('@')) {
+                            if (val.contains('@') && !selectedEmails.contains(val)) {
                               setDialogState(() {
-                                if (!selectedEmails.contains(val)) selectedEmails.add(val);
+                                selectedEmails.add(val);
                                 manualEmailController.clear();
                               });
                             }
@@ -201,8 +232,6 @@ class MainLayout extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // --- Existing Search/Recent Contacts ---
                     const Text("Recent Contacts", style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     TextField(
@@ -215,17 +244,13 @@ class MainLayout extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     FutureBuilder<List<String>>(
-                      future: repository.getRecentContacts(),
+                      future: widget.repository.getRecentContacts(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const LinearProgressIndicator();
                         final filtered = snapshot.data!.where((e) => e.toLowerCase().contains(searchQuery)).toList();
-
                         return Container(
-                          height: 120, // Slightly shorter to make room
-                          decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8)
-                          ),
+                          height: 120,
+                          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
                           child: filtered.isEmpty
                               ? const Center(child: Text("No recent contacts found"))
                               : ListView(
@@ -263,13 +288,9 @@ class MainLayout extends StatelessWidget {
                 ElevatedButton(
                   onPressed: selectedEmails.isEmpty ? null : () async {
                     try {
-                      for (String email in selectedEmails) {
-                        await repository.sendInvitation(email, activeGroupId);
-                      }
-                      if (context.mounted) {
-                        Navigator.pop(ctx);
-                        UIHelpers.showNotification("Invitations sent!", isError: false);
-                      }
+                      for (String email in selectedEmails) await widget.repository.sendInvitation(email, activeGroupId);
+                      if (mounted) Navigator.pop(ctx);
+                      UIHelpers.showNotification("Invitations sent!", isError: false);
                     } catch (e) {
                       UIHelpers.showNotification("Failed to send: $e");
                     }
@@ -294,14 +315,13 @@ class MainLayout extends StatelessWidget {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                final email = repository.getUserEmail();
+                final email = widget.repository.getUserEmail();
                 if (email == null || email.isEmpty) {
                   UIHelpers.showNotification("You must be signed in to share groups.");
                   return;
                 }
-
-                await repository.makeGroupPublic(group.id);
-                if (context.mounted) {
+                await widget.repository.makeGroupPublic(group.id);
+                if (mounted) {
                   Navigator.pop(ctx);
                   UIHelpers.showNotification("Group is now public!", isError: false);
                 }
@@ -318,31 +338,31 @@ class MainLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String activeGroupId = repository.getActiveGroupId();
-    final activeGroup = repository.getAllGroups().firstWhere(
+    final String activeGroupId = widget.repository.getActiveGroupId();
+    final allGroups = widget.repository.getAllGroups();
+    final activeGroup = allGroups.firstWhere(
           (g) => g.id == activeGroupId,
       orElse: () => GroceryGroup(id: '', name: 'None'),
     );
+
     return Scaffold(
       appBar: AppBar(
-          title: Text(activeGroup.id.isNotEmpty ? activeGroup.name : title),
-        leading: (showBackButton && Navigator.canPop(context))
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        )
+        title: Text(activeGroup.id.isNotEmpty ? activeGroup.name : widget.title),
+        // SYNC INDICATOR
+        bottom: _isSyncing
+            ? const PreferredSize(preferredSize: Size.fromHeight(4), child: LinearProgressIndicator())
+            : null,
+        leading: (widget.showBackButton && Navigator.canPop(context))
+            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context))
             : null,
         actions: [
           if (activeGroup.id.isNotEmpty)
             IconButton(
-              icon: Icon(
-                activeGroup.isShared ? Icons.person_add : Icons.share,
-                color: activeGroup.isShared ? Colors.blue : null,
-              ),
+              icon: Icon(activeGroup.isShared ? Icons.person_add : Icons.share, color: activeGroup.isShared ? Colors.blue : null),
               tooltip: activeGroup.isShared ? 'Invite People' : 'Share Group',
               onPressed: () => _handleShareAction(context, activeGroup, activeGroupId),
             ),
-          ...?actions,
+          ...?widget.actions,
         ],
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
@@ -351,54 +371,40 @@ class MainLayout extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Icon(Icons.shopping_cart_checkout, color: Colors.white, size: 40),
                   SizedBox(height: 10),
-                  Text(
-                    'Grocery Master',
-                    style: TextStyle(color: Colors.white, fontSize: 24),
-                  ),
+                  Text('Grocery Master', style: TextStyle(color: Colors.white, fontSize: 24)),
                 ],
               ),
             ),
             ListTile(
               leading: const Icon(Icons.dashboard),
-                title: const Text('Dashboard'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              title: const Text('Dashboard'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
               },
             ),
             const Divider(),
-            // Dynamic Group Selection
-            const ListTile(
-              leading: Icon(Icons.group_work),
-              title: Text('Active Group', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
+            const ListTile(leading: Icon(Icons.group_work), title: Text('Active Group', style: TextStyle(fontWeight: FontWeight.bold))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ValueListenableBuilder(
                 valueListenable: Hive.box<GroceryGroup>('groups').listenable(),
                 builder: (context, Box<GroceryGroup> box, _) {
-                  final groups = repository.getAllGroups();
-
-                  // Ensure activeGroupId exists in the list to avoid dropdown errors
+                  final groups = widget.repository.getAllGroups();
                   final effectiveValue = groups.any((g) => g.id == activeGroupId)
                       ? activeGroupId
                       : (groups.isNotEmpty ? groups.first.id : null);
 
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
@@ -420,18 +426,19 @@ class MainLayout extends StatelessWidget {
                         }).toList(),
                         onChanged: (String? newValue) async {
                           if (newValue != null) {
-                            await repository.setActiveGroup(newValue);
-                            if (context.mounted) {
+                            await widget.repository.setActiveGroup(newValue);
+
+                            widget.socketService.joinGroup(newValue);
+
+                            if (mounted) {
                               Navigator.pop(context);
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ListSelectionScreen(
-                                    repository: repository,
-                                    groupId: newValue,
-                                  ),
+                              Navigator.pushReplacement(context, MaterialPageRoute(
+                                builder: (context) => ListSelectionScreen(
+                                  repository: widget.repository,
+                                  socketService: widget.socketService, // Pass it along
+                                  groupId: newValue,
                                 ),
-                              );
+                              ));
                             }
                           }
                         },
@@ -451,27 +458,12 @@ class MainLayout extends StatelessWidget {
               leading: const Icon(Icons.mail_outline, color: Colors.orange),
               title: const Text('Received Invitations'),
               trailing: FutureBuilder<List<dynamic>>(
-                future: repository.getPendingInvitations(),
+                future: widget.repository.getPendingInvitations(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting ||
-                      !snapshot.hasData ||
-                      snapshot.data!.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final count = snapshot.data!.length;
-
+                  if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
                   return CircleAvatar(
-                    radius: 11,
-                    backgroundColor: Colors.red,
-                    child: Text(
-                      '$count',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold
-                      ),
-                    ),
+                    radius: 11, backgroundColor: Colors.red,
+                    child: Text('${snapshot.data!.length}', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                   );
                 },
               ),
@@ -480,37 +472,19 @@ class MainLayout extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.sync),
               title: const Text('Force Sync'),
-              subtitle: Text('Account: ${repository.getUserEmail() ?? "Not Linked"}'),
-              onTap: () async {
-                try {
-                  await repository.initialize();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sync successful!')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Sync failed: $e')),
-                    );
-                  }
-                }
-              },
+              subtitle: Text('Account: ${widget.repository.getUserEmail() ?? "Not Linked"}'),
+              onTap: () { Navigator.pop(context); _syncData(); },
             ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/settings');
-              },
+              onTap: () { Navigator.pop(context); Navigator.pushNamed(context, '/settings'); },
             ),
           ],
         ),
       ),
-      body: child,
-      floatingActionButton: floatingActionButton,
+      body: widget.child,
+      floatingActionButton: widget.floatingActionButton,
     );
   }
 }

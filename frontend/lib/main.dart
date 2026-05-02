@@ -125,7 +125,7 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.repository.initialize();
+      _syncData();
     }
   }
 
@@ -145,6 +145,7 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
             builder: (context) => GroceryListScreen(
               repository: widget.repository,
               sessionId: listId,
+              socketService: widget.socketService,
             ),
           ),
               (route) => route.isFirst,
@@ -234,13 +235,14 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
           darkTheme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.dark),
           home: userEmail == null
               ? SetupScreen(repository: widget.repository, onComplete: () => setState(() {}))
-              : HomeScreen(repository: widget.repository),
+              : HomeScreen(repository: widget.repository, socketService: widget.socketService),
           routes: {
             '/settings': (context) => SettingsScreen(repository: widget.repository),
-            '/home': (context) => HomeScreen(repository: widget.repository),
+            '/home': (context) => HomeScreen(repository: widget.repository, socketService: widget.socketService),
             '/groups': (context) => ListSelectionScreen(
               repository: widget.repository,
               groupId: widget.repository.getActiveGroupId(),
+              socketService: widget.socketService,
             ),
           },
         );

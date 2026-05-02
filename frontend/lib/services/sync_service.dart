@@ -383,6 +383,7 @@ class SyncService {
         Uri.parse('$baseUrl/items/update'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'id': item.id,
           'name': item.name,
           'listId': item.listId,
           'status': item.status.name,

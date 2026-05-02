@@ -6,14 +6,21 @@ import 'package:image_picker/image_picker.dart';
 import '../config.dart';
 import '../models/item.dart';
 import '../repositories/grocery_repository.dart';
+import '../services/socket_service.dart';
 import '../widgets/main_layout.dart';
 import '../utils/l10n.dart';
 
 class GroceryListScreen extends StatefulWidget {
   final GroceryRepository repository;
+  final SocketService socketService; // ADD THIS
   final String? sessionId;
 
-  const GroceryListScreen({super.key, required this.repository, this.sessionId});
+  const GroceryListScreen({
+    super.key,
+    required this.repository,
+    required this.socketService, // ADD THIS
+    this.sessionId
+  });
 
   @override
   State<GroceryListScreen> createState() => _GroceryListScreenState();
@@ -265,6 +272,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
                       builder: (context) => GroceryListScreen(
                         repository: widget.repository,
                         sessionId: newListId,
+                        socketService: widget.socketService,
                       ),
                     ),
                   );
@@ -309,6 +317,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       return MainLayout(
           title: 'Error',
           repository: widget.repository,
+          socketService: widget.socketService,
           child: Center(child: Text(L10n.of(context, 'error_no_list')))
       );
     }
@@ -316,6 +325,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     return MainLayout(
       title: L10n.of(context, 'items_title'),
       repository: widget.repository,
+      socketService: widget.socketService,
       actions: [
         IconButton(
           icon: const Icon(Icons.archive_outlined),

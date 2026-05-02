@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:grocery_list/services/socket_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_list.dart';
 import '../repositories/grocery_repository.dart';
@@ -9,14 +10,21 @@ import 'grocery_list_screen.dart';
 class SessionsScreen extends StatelessWidget {
   final GroceryRepository repository;
   final String groupId;
+  final SocketService socketService;
 
-  const SessionsScreen({super.key, required this.repository, required this.groupId});
+  const SessionsScreen({
+    super.key,
+    required this.repository,
+    required this.groupId,
+    required this.socketService,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MainLayout(
       title: L10n.of(context, 'archived_lists'),
       repository: repository,
+      socketService: socketService,
       child: ValueListenableBuilder(
         valueListenable: Hive.box<GroceryList>('lists').listenable(),
         builder: (context, Box<GroceryList> box, _) {
@@ -64,6 +72,7 @@ class SessionsScreen extends StatelessWidget {
                         builder: (context) => GroceryListScreen(
                           repository: repository,
                           sessionId: groceryList.id,
+                          socketService: socketService,
                         ),
                       ),
                     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:grocery_list/services/socket_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group_list.dart';
 import '../repositories/grocery_repository.dart';
@@ -9,11 +10,13 @@ import 'grocery_list_screen.dart';
 class ListSelectionScreen extends StatelessWidget {
   final GroceryRepository repository;
   final String groupId;
+  final SocketService socketService;
 
   const ListSelectionScreen({
     super.key,
     required this.repository,
     required this.groupId,
+    required this.socketService,
   });
 
   void _showCreateListDialog(BuildContext context) {
@@ -126,6 +129,7 @@ class ListSelectionScreen extends StatelessWidget {
     return MainLayout(
       title: L10n.of(context, 'my_lists'),
       repository: repository,
+      socketService: socketService,
       actions: [
         IconButton(
           icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
@@ -186,6 +190,7 @@ class ListSelectionScreen extends StatelessWidget {
                         builder: (context) => GroceryListScreen(
                           repository: repository,
                           sessionId: groceryList.id,
+                          socketService: socketService,
                         ),
                       ),
                     );

@@ -137,7 +137,6 @@ class GroceryRepository {
 
   /// Called when the socket receives 'item_updated'
   Future<void> handleSocketItemUpdated(Map<String, dynamic> data) async {
-    print('item updated');
     final String name = data['name'];
     final String listId = data['listId'];
     final String statusStr = data['status'];
@@ -147,6 +146,9 @@ class GroceryRepository {
 
     if (item != null) {
       item.status = _statusFromSocketString(statusStr);
+      item.name = name;
+      item.note = data['note'];
+      item.imagePath = data['imagePath'];
 
       await _itemBox.put(key, item);
     }

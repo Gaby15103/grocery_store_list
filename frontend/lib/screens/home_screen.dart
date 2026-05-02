@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/user.dart';
+import '../services/socket_service.dart';
 import '../widgets/main_layout.dart';
 import '../repositories/grocery_repository.dart';
 import '../models/group.dart';
@@ -11,8 +12,12 @@ import 'list_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final GroceryRepository repository;
+  final SocketService socketService;
 
-  const HomeScreen({super.key, required this.repository});
+  const HomeScreen({
+    super.key,
+    required this.repository,
+    required this.socketService,});
 
   Future<void> _launchRecipeSite() async {
     final Uri url = Uri.parse('https://recipes.gaby15103.org/recipes');
@@ -26,11 +31,14 @@ class HomeScreen extends StatelessWidget {
       UIHelpers.showNotification(L10n.of(context, 'no_account'));
       return;
     }
-    MainLayout(
-      repository: repository,
-      title: L10n.of(context, 'invitations'),
-      child: const SizedBox(),
-    ).showReceivedInvitationsDialog(context);
+
+    // Look up the tree for the MainLayout state
+    final state = context.findAncestorStateOfType<State<MainLayout>>();
+
+    if (state != null) {
+      // Cast to dynamic to call the public method we added to the State class
+      (state as dynamic).showReceivedInvitationsDialog();
+    }
   }
 
   @override
@@ -38,6 +46,7 @@ class HomeScreen extends StatelessWidget {
     return MainLayout(
       title: L10n.of(context, 'dashboard'),
       repository: repository,
+      socketService: socketService,
       child: CustomScrollView(
         slivers: [
           // 1. Welcome Header
@@ -156,7 +165,7 @@ class HomeScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ListSelectionScreen(repository: repository, groupId: group.id),
+                builder: (context) => ListSelectionScreen(repository: repository, groupId: group.id, socketService: socketService,),
               ),
             );
           }

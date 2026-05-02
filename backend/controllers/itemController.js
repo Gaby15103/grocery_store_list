@@ -94,11 +94,11 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const { name, listId, status, groupId, note, imagePath  } = req.body;
+    const { id, name, listId, status, groupId, note, imagePath  } = req.body;
     try {
         const [updatedRows] = await Item.update(
             { name, status, note, imagePath },
-            { where: { name, ListId: listId } }
+            { where: { id } }
         );
 
         if (updatedRows > 0 && groupId) {
