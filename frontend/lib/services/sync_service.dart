@@ -142,7 +142,6 @@ class SyncService {
 
   Future<List<dynamic>> fetchPendingInvites() async {
     try {
-      print("test");
       final response = await http.get(
         Uri.parse('$baseUrl/users/invitations'),
         headers: await _headers,
@@ -376,7 +375,7 @@ class SyncService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        final String serverId = data['id'].toString();
+        final int serverId = data['id'];
 
         item.id = serverId;
         final itemBox = Hive.box<GroceryItem>('items');

@@ -20,7 +20,7 @@ class GroceryItem extends HiveObject {
   @HiveField(6) String? modifiedBy;
   @HiveField(7) String? note;
   @HiveField(8) String? imagePath;
-  @HiveField(9) String? id;
+  @HiveField(9) int? id;
 
   GroceryItem({
     required this.name,

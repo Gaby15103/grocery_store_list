@@ -445,6 +445,7 @@ class GroceryRepository {
 
       // 2. IMPORTANT: Save them into Hive so the ValueListenableBuilder sees them
       for (var item in remoteItems) {
+        print(item);
         // Use a unique key to prevent duplicates
         await _itemBox.put('${item.listId}_${item.name}', item);
       }

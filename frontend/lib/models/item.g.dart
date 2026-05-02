@@ -26,7 +26,7 @@ class GroceryItemAdapter extends TypeAdapter<GroceryItem> {
       modifiedBy: fields[6] as String?,
       note: fields[7] as String?,
       imagePath: fields[8] as String?,
-      id: fields[9] as String?,
+      id: fields[9] as int?,
     );
   }
 
