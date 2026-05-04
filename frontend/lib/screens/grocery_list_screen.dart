@@ -57,11 +57,24 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(source: source, imageQuality: 50);
-    if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+    try {
+      final XFile? image = await _picker.pickImage(
+          source: source,
+          imageQuality: 50
+      );
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      // If permission is denied, this will prevent the crash
+      debugPrint('Permission error or picker cancelled: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enable camera/photo access in settings')),
+        );
+      }
     }
   }
 
