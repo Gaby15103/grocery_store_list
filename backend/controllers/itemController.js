@@ -75,9 +75,10 @@ exports.createItem = async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 exports.deleteItem = async (req, res) => {
+    const { itemId } = req.params;
     const { name, listId, groupId } = req.body;
     try {
-        await Item.destroy({ where: { name, ListId: listId } });
+        await Item.destroy({ where: { id: itemId } });
         if (groupId) {
             req.io.to(groupId).emit('item_deleted', { name, listId });
             let user = await User.findOne({ email: req.headers['x-user-email'] });

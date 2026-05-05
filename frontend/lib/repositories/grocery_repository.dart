@@ -582,8 +582,9 @@ class GroceryRepository {
   }
 
   Future<void> deleteItem(GroceryItem item) async {
-    if (_shouldSync()) {
+    if (_shouldSync() && item.id != null) {
       await _syncService.deleteItemOnServer(
+        item.id!,
         item.name,
         item.listId,
         getActiveGroupId(),

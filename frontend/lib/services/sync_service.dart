@@ -406,10 +406,10 @@ class SyncService {
     }
   }
 
-  Future<void> deleteItemOnServer(String name, String listId, String groupId) async {
+  Future<void> deleteItemOnServer(int itemId, String name, String listId, String groupId) async {
     try {
       await http.delete(
-        Uri.parse('$baseUrl/items'),
+        Uri.parse('$baseUrl/items/$itemId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': name,
