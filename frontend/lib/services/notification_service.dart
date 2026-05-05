@@ -7,8 +7,17 @@ class NotificationService {
 
   static Future<void> init({String channelName = 'Grocery Updates', String channelDesc = 'Grocery list changes'}) async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
 
+    const darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: darwinSettings, 
+    );
     await _notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -44,9 +53,14 @@ class NotificationService {
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'grocery_sync_channel',
-          'Grocery Updates', // This matches the channel name above
+          'Grocery Updates',
           importance: Importance.max,
           priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
         ),
       ),
       payload: payload,
