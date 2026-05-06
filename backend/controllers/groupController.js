@@ -57,7 +57,7 @@ exports.deleteGroup = async (req, res) => {
     if (!email) return res.status(400).send("Email header missing");
 
     try {
-        const group = await Group.findOne({ where: { groupId } });
+        const group = await Group.findOne({ where: { id: groupId } });
         if (!group) return res.status(404).send("Group not found");
 
         const user = await User.findOne({ where: { email } });
