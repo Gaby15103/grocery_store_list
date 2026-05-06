@@ -10,6 +10,33 @@ exports.getGroups = async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 };
 
+exports.makePublic = async (req, res) => {
+    const { groupId } = req.params;
+    const userEmail = req.headers['x-user-email'];
+
+    try {
+        const group = await Group.findByPk(groupId);
+
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        // Update the flag
+        group.isShared = true;
+        await group.save();
+
+        // Ensure the relationship exists in the sync table if necessary
+        await UserGroup.findOrCreate({
+            where: { group_id: groupId, user_email: userEmail }
+        });
+
+        res.status(200).json(group);
+    } catch (error) {
+        console.error("Error making group public:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 exports.createGroup = async (req, res) => {
     const { id, name } = req.body;
     const email = req.headers['x-user-email'];

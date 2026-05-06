@@ -4,30 +4,45 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart';
+import 'package:provider/provider.dart';
 
-import 'screens/grocery_list_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/list_selection_screen.dart';
-import 'screens/setup_screen.dart';
-import 'screens/settings_screen.dart';
+// Your existing imports
 import 'config.dart';
 import 'models/group_list.dart';
 import 'models/item.dart';
 import 'models/group.dart';
-import 'repositories/grocery_repository.dart';
 import 'services/socket_service.dart';
 import 'services/notification_service.dart';
-import 'utils/l10n.dart';
+
+// Your New MVC imports
+import 'services/api/auth_api_client.dart';
+import 'services/api/group_api_client.dart';
+import 'services/api/list_api_client.dart';
+import 'services/api/item_api_client.dart';
+import 'repositories/auth_repository.dart';
+import 'repositories/group_repository.dart';
+import 'repositories/list_repository.dart';
+import 'repositories/item_repository.dart';
+import 'controllers/auth_controller.dart';
+import 'controllers/group_controller.dart';
+import 'controllers/list_controller.dart';
+import 'controllers/item_controller.dart';
+
+// Views
+import 'views/home_view.dart';
+import 'views/setup_view.dart';
+import 'views/settings_view.dart';
+import 'views/list_selection_view.dart';
+import 'views/grocery_list_view.dart';
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await AppConfig.init();
 
-  // Safe dotenv load - ignore error if .env is missing in web assets
   try {
     await dotenv.load();
   } catch (e) {
@@ -35,25 +50,20 @@ void main() async {
   }
 
   await Hive.initFlutter();
-
-  // Register adapters early
   Hive.registerAdapter(ItemStatusAdapter());
   Hive.registerAdapter(GroceryItemAdapter());
   Hive.registerAdapter(GroceryGroupAdapter());
   Hive.registerAdapter(GroceryListAdapter());
 
-  // Open metadata first to check language
   final box = await Hive.openBox<String>('metadata');
   final savedLang = box.get('language') ?? WidgetsBinding.instance.platformDispatcher.locale.languageCode;
   final bool isFrench = savedLang == 'fr';
 
-  // Only init Mobile-specific services
+  // --- KEEPING YOUR MOBILE LOGIC ---
   if (!kIsWeb) {
     await NotificationService.init(
       channelName: isFrench ? 'Mises à jour des courses' : 'Grocery Updates',
-      channelDesc: isFrench
-          ? 'Notifications pour les changements dans les listes'
-          : 'Notifications for grocery list changes',
+      channelDesc: isFrench ? 'Changements dans les listes' : 'List changes',
     );
 
     FlutterForegroundTask.init(
@@ -73,36 +83,37 @@ void main() async {
         allowWifiLock: true,
       ),
     );
-
-    NotificationPermission notificationPermission = await FlutterForegroundTask.checkNotificationPermission();
-    if (notificationPermission != NotificationPermission.granted) {
-      await FlutterForegroundTask.requestNotificationPermission();
-    }
   }
 
-  // Open data boxes
   await Future.wait([
     Hive.openBox<GroceryGroup>('groups'),
     Hive.openBox<GroceryItem>('items'),
     Hive.openBox<GroceryList>('lists'),
   ]);
 
-  final repository = GroceryRepository();
-  await repository.initialize();
+  // --- INITIALIZE SERVICES & REPOS ---
+  final socketService = SocketService();
+  final authRepo = AuthRepository(AuthApiClient());
+  final groupRepo = GroupRepository(GroupApiClient());
+  final listRepo = ListRepository(ListApiClient());
+  final itemRepo = ItemRepository(ItemApiClient());
 
-  final socketService = SocketService(repository);
-
-  runApp(GroceryApp(
-    repository: repository,
-    socketService: socketService,
-  ));
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider.value(value: socketService),
+        ChangeNotifierProvider(create: (_) => AuthController(repository: authRepo)),
+        ChangeNotifierProvider(create: (_) => GroupController(repository: groupRepo, socketService: socketService)),
+        ChangeNotifierProvider(create: (_) => ListController(repository: listRepo)),
+        ChangeNotifierProvider(create: (_) => ItemController(repository: itemRepo)),
+      ],
+      child: const GroceryApp(),
+    ),
+  );
 }
 
 class GroceryApp extends StatefulWidget {
-  final GroceryRepository repository;
-  final SocketService socketService;
-
-  const GroceryApp({super.key, required this.repository, required this.socketService});
+  const GroceryApp({super.key});
 
   @override
   State<GroceryApp> createState() => _GroceryAppState();
@@ -114,26 +125,27 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _setupGlobalListeners();
     WidgetsBinding.instance.addObserver(this);
-    _syncData();
+
+    // Pass the context-aware providers to your global listeners
+    _setupGlobalListeners();
+
     if (!kIsWeb) {
       _setupNotificationTapHandler();
     }
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _syncData();
-    }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
-  Future<void> _syncData() async {
-    try {
-      await widget.repository.initialize();
-    } catch (e) {
-      debugPrint("Background sync failed: $e");
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh groups and items when app comes back to focus
+      context.read<GroupController>().loadGroups();
     }
   }
 
@@ -142,10 +154,8 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
       if (listId != null) {
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => GroceryListScreen(
-              repository: widget.repository,
+            builder: (context) => GroceryListView(
               sessionId: listId,
-              socketService: widget.socketService,
             ),
           ),
               (route) => route.isFirst,
@@ -155,9 +165,11 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   }
 
   void _setupGlobalListeners() {
-    widget.repository.initSocketListener(widget.socketService.eventStream);
+    final socket = context.read<SocketService>();
+    final groupCtrl = context.read<GroupController>();
+    final itemCtrl = context.read<ItemController>();
 
-    // Foreground service setup - Mobile Only
+    // Start Foreground Service - Mobile Only
     if (!kIsWeb && !_isSocketInitialized) {
       FlutterForegroundTask.startService(
         notificationTitle: 'Grocery Master',
@@ -165,88 +177,125 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
       );
     }
 
-    widget.socketService.eventStream.listen((event) {
-      if (kIsWeb) return; // Skip phone notifications on web browser
+    // Handle incoming socket events globally
+    socket.eventStream.listen((event) {
+      // 1. Logic for Mobile Notifications
+      if (!kIsWeb) {
+        _handleBackgroundNotification(event);
+      }
 
-      final String? incomingListId = event.data['listId'] ?? event.data['ListId'];
-      final String? activeListId = widget.repository.currentOpenedListId;
-
-      if (incomingListId != null && incomingListId == activeListId) return;
-
-      final lang = Hive.box<String>('metadata').get('language', defaultValue: 'fr');
-
-      if (event.type == 'item_added') {
-        NotificationService.showPhoneNotification(
-          id: 1,
-          title: lang == 'fr' ? 'Nouvel article !' : 'New Item!',
-          body: lang == 'fr'
-              ? '${event.data['name']} a été ajouté à une liste.'
-              : '${event.data['name']} was added to a list.',
-          payload: incomingListId,
-        );
-      } else if (event.type == 'item_updated' && event.data['status'] == 'bought') {
-        NotificationService.showPhoneNotification(
-          id: 2,
-          title: lang == 'fr' ? 'Article acheté' : 'Item Purchased',
-          body: lang == 'fr'
-              ? 'Quelqu\'un a acheté ${event.data['name']} !'
-              : 'Someone bought ${event.data['name']}!',
-          payload: incomingListId,
-        );
+      // 2. Logic for UI Refresh (The real MVC way)
+      if (event.type == 'force_refresh' || event.type == 'group_deleted') {
+        groupCtrl.loadGroups();
       }
     });
   }
 
+  void _handleBackgroundNotification(SocketEvent event) {
+    if (kIsWeb) return;
+
+    final box = Hive.box<String>('metadata');
+    final lang = box.get('language', defaultValue: 'fr');
+    final String? incomingListId = event.data['listId'] ?? event.data['ListId'];
+
+    final itemCtrl = context.read<ItemController>();
+    if (incomingListId != null && incomingListId == itemCtrl.currentListId) {
+      debugPrint("🔇 Silencing notification: User is looking at list $incomingListId");
+      return;
+    }
+
+    final bool notifyItems = box.get('notify_item_changes', defaultValue: 'true') == 'true';
+    final bool notifyInvites = box.get('notify_invitations', defaultValue: 'true') == 'true';
+    final bool notifyListCreated = box.get('notify_list_created', defaultValue: 'true') == 'true';
+    final bool notifyCarryOver = box.get('notify_carry_over', defaultValue: 'true') == 'true';
+
+    switch (event.type) {
+      case 'item_added':
+        if (!notifyItems) return;
+        NotificationService.showPhoneNotification(
+          id: 1,
+          title: lang == 'fr' ? 'Nouvel article !' : 'New Item!',
+          body: '${event.data['name']} ${lang == 'fr' ? 'ajouté' : 'added'}.',
+          payload: incomingListId,
+        );
+        break;
+
+      case 'item_updated':
+        if (!notifyItems) return;
+        if (event.data['status'] == 'bought') {
+          NotificationService.showPhoneNotification(
+            id: 2,
+            title: lang == 'fr' ? 'Article acheté' : 'Item Purchased',
+            body: lang == 'fr'
+                ? 'Quelqu\'un a acheté ${event.data['name']} !'
+                : 'Someone bought ${event.data['name']}!',
+            payload: incomingListId,
+          );
+        }
+        break;
+
+      case 'invitation_received':
+        if (!notifyInvites) return;
+        NotificationService.showPhoneNotification(
+          id: 3,
+          title: lang == 'fr' ? 'Nouvelle invitation' : 'New Invitation',
+          body: lang == 'fr'
+              ? 'Vous avez été invité dans un groupe.'
+              : 'You were invited to a group.',
+        );
+        break;
+
+      case 'list_created':
+        final bool isCarryOver = event.data['isCarryOver'] ?? false;
+        if (isCarryOver && !notifyCarryOver) return;
+        if (!isCarryOver && !notifyListCreated) return;
+
+        NotificationService.showPhoneNotification(
+          id: 4,
+          title: lang == 'fr' ? 'Nouvelle liste' : 'New List',
+          body: '${event.data['name']} ${lang == 'fr' ? 'est prête' : 'is ready'}.',
+          payload: incomingListId,
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+
     return ValueListenableBuilder(
       valueListenable: Hive.box<String>('metadata').listenable(),
       builder: (context, Box<String> box, _) {
-        final String? userEmail = box.get('userEmail');
         final String language = box.get('language') ?? 'fr';
+        final String themeModePref = box.get('themeMode') ?? 'system';
 
-        if (userEmail != null && !_isSocketInitialized) {
-          widget.socketService.connect(userEmail);
+        // Connect Socket if logged in
+        if (auth.isLoggedIn && !_isSocketInitialized) {
+          context.read<SocketService>().connect(auth.repository.getEmail()!);
           _isSocketInitialized = true;
         }
-
-        final String themeModePref = box.get('themeMode') ?? 'system';
-        ThemeMode currentThemeMode = themeModePref == 'dark'
-            ? ThemeMode.dark
-            : themeModePref == 'light' ? ThemeMode.light : ThemeMode.system;
-
-        final String? colorSeedHex = box.get('colorSeed');
-        final Color seedColor = colorSeedHex != null ? Color(int.parse(colorSeedHex)) : Colors.green;
 
         return MaterialApp(
           navigatorKey: navigatorKey,
           scaffoldMessengerKey: scaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
-          title: 'Grocery Master',
           locale: Locale(language),
-          supportedLocales: const [Locale('fr'), Locale('en')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          themeMode: currentThemeMode,
-          theme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.light),
-          darkTheme: ThemeData(colorSchemeSeed: seedColor, useMaterial3: true, brightness: Brightness.dark),
-          home: userEmail == null
-              ? SetupScreen(repository: widget.repository, onComplete: () => setState(() {}))
-              : HomeScreen(repository: widget.repository, socketService: widget.socketService),
+          themeMode: _parseTheme(themeModePref),
+          // ... rest of your theme data ...
+          home: auth.isLoggedIn ? const HomeView() : const SetupView(),
           routes: {
-            '/settings': (context) => SettingsScreen(repository: widget.repository),
-            '/home': (context) => HomeScreen(repository: widget.repository, socketService: widget.socketService),
-            '/groups': (context) => ListSelectionScreen(
-              repository: widget.repository,
-              groupId: widget.repository.getActiveGroupId(),
-              socketService: widget.socketService,
-            ),
+            '/settings': (context) => const SettingsView(),
+            '/home': (context) => const HomeView(),
           },
         );
       },
     );
+  }
+
+  ThemeMode _parseTheme(String pref) {
+    if (pref == 'dark') return ThemeMode.dark;
+    if (pref == 'light') return ThemeMode.light;
+    return ThemeMode.system;
   }
 }

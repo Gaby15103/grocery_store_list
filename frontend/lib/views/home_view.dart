@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/user.dart';
-import '../services/socket_service.dart';
-import '../widgets/main_layout.dart';
-import '../repositories/grocery_repository.dart';
 import '../models/group.dart';
+import '../widgets/main_layout.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/group_controller.dart';
 import '../utils/ui_helpers.dart';
-import '../utils/l10n.dart'; // Ensure this utility exists
-import 'list_selection_screen.dart';
+import '../utils/l10n.dart';
+import 'list_selection_view.dart';
 
-class HomeScreen extends StatelessWidget {
-  final GroceryRepository repository;
-  final SocketService socketService;
-
-  const HomeScreen({
-    super.key,
-    required this.repository,
-    required this.socketService,});
+class HomeView extends StatelessWidget {
+  const HomeView({super.key});
 
   Future<void> _launchRecipeSite() async {
     final Uri url = Uri.parse('https://recipes.gaby15103.org/recipes');
@@ -27,57 +20,40 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showInvitations(BuildContext context) {
-    if (repository.getUserEmail() == null) {
+    final auth = context.read<AuthController>();
+    if (!auth.isLoggedIn) {
       UIHelpers.showNotification(L10n.of(context, 'no_account'));
       return;
     }
-
-    // Look up the tree for the MainLayout state
-    final state = context.findAncestorStateOfType<State<MainLayout>>();
-
-    if (state != null) {
-      // Cast to dynamic to call the public method we added to the State class
-      (state as dynamic).showReceivedInvitationsDialog();
-    }
+    auth.refreshSocialData();
   }
 
   @override
   Widget build(BuildContext context) {
+    final groupCtrl = context.watch<GroupController>();
+    final authCtrl = context.watch<AuthController>();
+
     return MainLayout(
       title: L10n.of(context, 'dashboard'),
-      repository: repository,
-      socketService: socketService,
       child: CustomScrollView(
         slivers: [
-          // 1. Welcome Header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: FutureBuilder<User>(
-                future: repository.getCurrentUser(),
-                builder: (context, snapshot) {
-                  String displayName = snapshot.hasData
-                      ? "${snapshot.data!.firstName} ${snapshot.data!.lastName}"
-                      : L10n.of(context, 'chef_fallback');
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${L10n.of(context, 'welcome')} $displayName",
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(L10n.of(context, 'kitchen_status')),
-                    ],
-                  );
-                },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "${L10n.of(context, 'welcome')} ${authCtrl.userProfile?.firstName ?? L10n.of(context, 'chef_fallback')}",
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(L10n.of(context, 'kitchen_status')),
+                ],
               ),
             ),
           ),
-
-          // 2. Recent Groups Carousel
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -90,31 +66,23 @@ class HomeScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: SizedBox(
               height: 120,
-              child: ValueListenableBuilder(
-                valueListenable: Hive.box<GroceryGroup>('groups').listenable(),
-                builder: (context, Box<GroceryGroup> box, _) {
-                  final groups = repository.getAllGroups().take(5).toList();
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: groups.length,
-                    itemBuilder: (context, index) => _buildRecentCard(context, groups[index]),
-                  );
-                },
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: groupCtrl.groups.take(5).length,
+                itemBuilder: (context, index) => _buildRecentCard(context, groupCtrl.groups[index], groupCtrl),
               ),
             ),
           ),
 
-          // 3. System Status
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildStatusBanner(context),
+              child: _buildStatusBanner(context, authCtrl),
             ),
           ),
 
-          // 4. Functional Quick Actions
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
@@ -154,18 +122,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentCard(BuildContext context, GroceryGroup group) {
+  Widget _buildRecentCard(BuildContext context, GroceryGroup group, GroupController groupCtrl) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: InkWell(
         onTap: () async {
-          await repository.setActiveGroup(group.id);
+          await groupCtrl.changeActiveGroup(group.id);
           if (context.mounted) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ListSelectionScreen(repository: repository, groupId: group.id, socketService: socketService,),
+                builder: (context) => ListSelectionView(groupId: group.id),
               ),
             );
           }
@@ -179,8 +147,12 @@ class HomeScreen extends StatelessWidget {
             children: [
               Icon(group.isShared ? Icons.cloud : Icons.home,
                   color: group.isShared ? Colors.blue : Colors.green, size: 20),
-              Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text(L10n.of(context, 'active_group_label'), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text(group.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              Text(L10n.of(context, 'active_group_label'),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ),
@@ -188,8 +160,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBanner(BuildContext context) {
-    final bool isOnline = repository.getUserEmail() != null;
+  Widget _buildStatusBanner(BuildContext context, AuthController auth) {
+    final bool isOnline = auth.isLoggedIn;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

@@ -7,6 +7,7 @@ router.get('/', groupCtrl.getGroups);
 router.post('/', groupCtrl.createGroup);
 router.delete('/:groupId', groupCtrl.deleteGroup);
 router.get('/:groupId/lists', itemCtrl.getListsByGroup);
+router.get('/:groupId/make-public', groupCtrl.makePublic);
 router.post('/:groupId/invite', groupCtrl.inviteUser);
 router.put('/:groupId/invite/respond', groupCtrl.respondToInvite);
 module.exports = router;
