@@ -314,7 +314,7 @@ class _GroceryListViewState extends State<GroceryListView> {
         PopupMenuItem(value: 'discarded', child: Text(L10n.of(context, 'discard'))),
         const PopupMenuDivider(),
         PopupMenuItem(value: 'edit', child: Text(L10n.of(context, 'edit'))),
-        PopupMenuItem(onTap: () => itemCtrl.removeItem(item), child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red))),
+        PopupMenuItem(onTap: () => itemCtrl.removeItem(item, groupId), child: Text(L10n.of(context, 'delete'), style: const TextStyle(color: Colors.red))),
       ],
       icon: const Icon(Icons.more_vert),
     );

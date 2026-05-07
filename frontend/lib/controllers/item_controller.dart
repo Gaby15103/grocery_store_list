@@ -143,9 +143,9 @@ class ItemController extends ChangeNotifier {
     }
   }
 
-  Future<void> removeItem(GroceryItem item) async {
+  Future<void> removeItem(GroceryItem item, String groupId) async {
     try {
-      await repository.deleteItem(item);
+      await repository.deleteItem(item, groupId);
       _currentItems.removeWhere((i) => i.id == item.id);
       notifyListeners();
     } catch (e) {
