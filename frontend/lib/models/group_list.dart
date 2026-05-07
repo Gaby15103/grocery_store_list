@@ -22,11 +22,11 @@ class GroceryList extends HiveObject {
     return GroceryList(
       id: json['id'] as String,
       name: json['name'] as String,
-      groupId: json['group_id'] as String,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+      groupId: json['GroupId'] as String,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      isArchived: json['is_archived'] ?? false,
+      isArchived: json['isArchived'] ?? false,
     );
   }
 

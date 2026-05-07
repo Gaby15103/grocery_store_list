@@ -57,54 +57,60 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Create New Group'),
-        content: StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'Group Name (e.g., Camping Trip)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                CheckboxListTile(
-                  title: const Text('Share this group'),
-                  value: isShared,
-                  onChanged: (val) => setDialogState(() => isShared = val ?? false),
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              if (name.isEmpty) return;
+      builder: (ctx) =>
+          AlertDialog(
+            title: const Text('Create New Group'),
+            content: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Group Name (e.g., Camping Trip)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Share this group'),
+                      value: isShared,
+                      onChanged: (val) =>
+                          setDialogState(() => isShared = val ?? false),
+                    ),
+                  ],
+                );
+              },
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) return;
 
-              if (isShared && !authCtrl.isLoggedIn) {
-                UIHelpers.showNotification("Login required to share groups.");
-                return;
-              }
+                  if (isShared && !authCtrl.isLoggedIn) {
+                    UIHelpers.showNotification(
+                        "Login required to share groups.");
+                    return;
+                  }
 
-              try {
-                await groupCtrl.createGroup(name); // Shared logic handled inside controller
-                if (mounted) Navigator.pop(ctx);
-                UIHelpers.showNotification("Group created!", isError: false);
-              } catch (e) {
-                UIHelpers.showNotification("Error: $e");
-              }
-            },
-            child: const Text('Create'),
+                  try {
+                    await groupCtrl.createGroup(
+                        name);
+                    if (mounted) Navigator.pop(ctx);
+                    UIHelpers.showNotification(
+                        "Group created!", isError: false);
+                  } catch (e) {
+                    UIHelpers.showNotification("Error: $e");
+                  }
+                },
+                child: const Text('Create'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -114,31 +120,33 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Pending Invitations'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: authCtrl.pendingInvites.length,
-            itemBuilder: (context, index) {
-              final invite = authCtrl.pendingInvites[index];
-              return ListTile(
-                title: Text(invite['GroupName']),
-                subtitle: Text("From: ${invite['OwnerEmail']}"),
-                trailing: IconButton(
-                  icon: const Icon(Icons.check_circle, color: Colors.green),
-                  onPressed: () async {
-                    await authCtrl.acceptGroupInvitation(invite['groupId']);
-                    await groupCtrl.loadGroups(); // Refresh groups to see the new one
-                    if (mounted) Navigator.pop(ctx);
-                  },
-                ),
-              );
-            },
+      builder: (ctx) =>
+          AlertDialog(
+            title: const Text('Pending Invitations'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: authCtrl.pendingInvites.length,
+                itemBuilder: (context, index) {
+                  final invite = authCtrl.pendingInvites[index];
+                  return ListTile(
+                    title: Text(invite['GroupName']),
+                    subtitle: Text("From: ${invite['OwnerEmail']}"),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.check_circle, color: Colors.green),
+                      onPressed: () async {
+                        await authCtrl.acceptGroupInvitation(invite['groupId']);
+                        await groupCtrl
+                            .loadGroups(); // Refresh groups to see the new one
+                        if (mounted) Navigator.pop(ctx);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -147,150 +155,193 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
     final TextEditingController manualEmailController = TextEditingController();
     String searchQuery = "";
 
-    // Grab controllers once at the start of the function
     final authCtrl = context.read<AuthController>();
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Invite to Group'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Invite by Email", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Row(
+      builder: (ctx) =>
+          StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Invite to Group'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: manualEmailController,
-                          decoration: const InputDecoration(
-                            hintText: "Enter email address...",
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      const Text("Invite by Email",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: manualEmailController,
+                              decoration: const InputDecoration(
+                                hintText: "Enter email address...",
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12),
+                              ),
+                            ),
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle, color: Colors
+                                .blue),
+                            onPressed: () {
+                              final val = manualEmailController.text.trim();
+                              if (val.contains('@') &&
+                                  !selectedEmails.contains(val)) {
+                                setDialogState(() {
+                                  selectedEmails.add(val);
+                                  manualEmailController.clear();
+                                });
+                              }
+                            },
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text("Recent Contacts",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 10),
+                      TextField(
+                        decoration: const InputDecoration(
+                          hintText: "Search recent...",
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (val) =>
+                            setDialogState(() =>
+                            searchQuery = val.toLowerCase()),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8)),
+                        child: authCtrl.recentContacts.isEmpty
+                            ? const Center(child: Text("No recent contacts"))
+                            : ListView(
+                          children: authCtrl.recentContacts
+                              .where((e) =>
+                              e.toLowerCase().contains(searchQuery))
+                              .map((email) {
+                            final isSelected = selectedEmails.contains(email);
+                            return CheckboxListTile(
+                              title: Text(
+                                  email, style: const TextStyle(fontSize: 14)),
+                              value: isSelected,
+                              onChanged: (bool? val) {
+                                setDialogState(() {
+                                  val!
+                                      ? selectedEmails.add(email)
+                                      : selectedEmails.remove(email);
+                                });
+                              },
+                            );
+                          }).toList(),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.blue),
-                        onPressed: () {
-                          final val = manualEmailController.text.trim();
-                          if (val.contains('@') && !selectedEmails.contains(val)) {
-                            setDialogState(() {
-                              selectedEmails.add(val);
-                              manualEmailController.clear();
-                            });
-                          }
-                        },
-                      )
+                      if (selectedEmails.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Selected to Invite:",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8.0, // Gap between chips
+                          runSpacing: 4.0, // Gap between lines
+                          children: selectedEmails.map((email) {
+                            return InputChip(
+                              label: Text(
+                                email,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              onDeleted: () {
+                                // Remove from the list when the 'X' is clicked
+                                setDialogState(() {
+                                  selectedEmails.remove(email);
+                                });
+                              },
+                              deleteIconColor: Colors.redAccent,
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  const Text("Recent Contacts", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  TextField(
-                    decoration: const InputDecoration(
-                      hintText: "Search recent...",
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (val) => setDialogState(() => searchQuery = val.toLowerCase()),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx),
+                      child: const Text("Cancel")),
+                  ElevatedButton(
+                    onPressed: selectedEmails.isEmpty ? null : () async {
+                      try {
+                        for (String email in selectedEmails) {
+                          await authCtrl.sendInvitation(activeGroupId, email);
+                        }
+                        if (mounted) Navigator.pop(ctx);
+                        UIHelpers.showNotification(
+                            "Invitations sent!", isError: false);
+                      } catch (e) {
+                        UIHelpers.showNotification("Failed to send: $e");
+                      }
+                    },
+                    child: Text("Invite (${selectedEmails.length})"),
                   ),
-                  const SizedBox(height: 10),
-                  // --- NO FUTUREBUILDER NEEDED ---
-                  // We use the contacts already in the AuthController
-                  Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: authCtrl.recentContacts.isEmpty
-                        ? const Center(child: Text("No recent contacts"))
-                        : ListView(
-                      children: authCtrl.recentContacts
-                          .where((e) => e.toLowerCase().contains(searchQuery))
-                          .map((email) {
-                        final isSelected = selectedEmails.contains(email);
-                        return CheckboxListTile(
-                          title: Text(email, style: const TextStyle(fontSize: 14)),
-                          value: isSelected,
-                          onChanged: (bool? val) {
-                            setDialogState(() {
-                              val! ? selectedEmails.add(email) : selectedEmails.remove(email);
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  // ... Chip Wrap logic remains exactly the same ...
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-              ElevatedButton(
-                onPressed: selectedEmails.isEmpty ? null : () async {
-                  try {
-                    for (String email in selectedEmails) {
-                      await authCtrl.sendInvitation(activeGroupId, email);
-                    }
-                    if (mounted) Navigator.pop(ctx);
-                    UIHelpers.showNotification("Invitations sent!", isError: false);
-                  } catch (e) {
-                    UIHelpers.showNotification("Failed to send: $e");
-                  }
-                },
-                child: Text("Invite (${selectedEmails.length})"),
-              ),
-            ],
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 
-  void _handleShareAction(BuildContext context, GroceryGroup group, String activeGroupId) {
+  void _handleShareAction(BuildContext context, GroceryGroup group,
+      String activeGroupId) {
     final authCtrl = context.read<AuthController>();
     final groupCtrl = context.read<GroupController>();
 
     if (!group.isShared) {
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("Share Group?"),
-          content: const Text("To invite people, this group needs to be synced with the server. Make it public?"),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-            ElevatedButton(
-              onPressed: () async {
-                if (!authCtrl.isLoggedIn) {
-                  UIHelpers.showNotification("You must be signed in to share groups.");
-                  return;
-                }
+        builder: (ctx) =>
+            AlertDialog(
+              title: const Text("Share Group?"),
+              content: const Text(
+                  "To invite people, this group needs to be synced with the server. Make it public?"),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!authCtrl.isLoggedIn) {
+                      UIHelpers.showNotification(
+                          "You must be signed in to share groups.");
+                      return;
+                    }
 
-                try {
-                  // This replaces repository.makeGroupPublic
-                  // You'll need to add a makeGroupPublic method to your GroupController!
-                  await groupCtrl.makeGroupPublic(group.id);
+                    try {
+                      // This replaces repository.makeGroupPublic
+                      // You'll need to add a makeGroupPublic method to your GroupController!
+                      await groupCtrl.makeGroupPublic(group.id);
 
-                  if (mounted) {
-                    Navigator.pop(ctx);
-                    UIHelpers.showNotification("Group is now public!", isError: false);
-                  }
-                } catch (e) {
-                  UIHelpers.showNotification("Error: $e");
-                }
-              },
-              child: const Text("Make Public"),
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        UIHelpers.showNotification(
+                            "Group is now public!", isError: false);
+                      }
+                    } catch (e) {
+                      UIHelpers.showNotification("Error: $e");
+                    }
+                  },
+                  child: const Text("Make Public"),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     } else {
       _showSendInvitationsDialog(context, activeGroupId);
@@ -299,7 +350,6 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // 1. WATCH for changes
     final groupCtrl = context.watch<GroupController>();
     final authCtrl = context.watch<AuthController>();
 
@@ -310,53 +360,172 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(activeGroup.id.isNotEmpty ? activeGroup.name : widget.title),
+        title: Text(
+            activeGroup.id.isNotEmpty ? activeGroup.name : widget.title),
         bottom: groupCtrl.isLoading
-            ? const PreferredSize(preferredSize: Size.fromHeight(4), child: LinearProgressIndicator())
+            ? const PreferredSize(
+            preferredSize: Size.fromHeight(4), child: LinearProgressIndicator())
             : null,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: (widget.showBackButton && Navigator.canPop(context))
+            ? IconButton(icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context))
+            : null,
+        actions: [
+          if (activeGroup.id.isNotEmpty)
+            IconButton(
+              icon: Icon(activeGroup.isShared ? Icons.person_add : Icons.share,
+                  color: activeGroup.isShared ? Colors.blue : null),
+              tooltip: activeGroup.isShared ? 'Invite People' : 'Share Group',
+              onPressed: () =>
+                  _handleShareAction(
+                      context, activeGroup, groupCtrl.activeGroupId!),
+            ),
+          ...?widget.actions,
+        ],
+        backgroundColor: Theme
+            .of(context)
+            .colorScheme
+            .inversePrimary,
       ),
       drawer: Drawer(
         child: ListView(
+          padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
-              child: const Text('Grocery Master', style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
-            // --- Group Selector ---
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: activeGroup.id.isNotEmpty ? activeGroup.id : null,
-                items: groupCtrl.groups.map((g) {
-                  return DropdownMenuItem(value: g.id, child: Text(g.name));
-                }).toList(),
-                onChanged: (id) async {
-                  if (id != null) {
-                    await groupCtrl.changeActiveGroup(id);
-                    if (mounted) {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(context, MaterialPageRoute(
-                        builder: (_) => ListSelectionView(groupId: id),
-                      ));
-                    }
-                  }
-                },
+              decoration: BoxDecoration(color: Theme
+                  .of(context)
+                  .colorScheme
+                  .primary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(Icons.shopping_cart_checkout, color: Colors.white,
+                      size: 40),
+                  const SizedBox(height: 10),
+                  const Text('Grocery Master',
+                      style: TextStyle(color: Colors.white, fontSize: 24)),
+                  if (authCtrl.isLoggedIn)
+                    Text(authCtrl.userProfile?.email ?? "",
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                ],
               ),
             ),
+
             ListTile(
-              leading: const Icon(Icons.add_circle_outline, color: Colors.green),
-              title: const Text('Create New Group'),
-              onTap: () => _showCreateGroupDialog(context),
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Dashboard'),
+              onTap: () {
+                Navigator.pop(context); // Ferme le drawer
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/home', (route) => false);
+              },
             ),
+
+            const Divider(),
+            const ListTile(
+                leading: Icon(Icons.group_work),
+                title: Text('Active Group',
+                    style: TextStyle(fontWeight: FontWeight.bold))
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300)
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: activeGroup.id.isNotEmpty ? activeGroup.id : null,
+                    hint: const Text("Select Group"),
+                    items: groupCtrl.groups.map((group) {
+                      return DropdownMenuItem<String>(
+                        value: group.id,
+                        child: Row(
+                          children: [
+                            Text(group.name),
+                            if (group.isShared) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.cloud_queue, size: 16,
+                                  color: Colors.blue),
+                            ],
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) async {
+                      if (newValue != null) {
+                        await groupCtrl.changeActiveGroup(newValue);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(context, MaterialPageRoute(
+                            builder: (context) =>
+                                ListSelectionView(groupId: newValue),
+                          ));
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+
             ListTile(
-              leading: const Icon(Icons.mail_outline),
-              title: const Text('Invitations'),
+              leading: const Icon(
+                  Icons.add_circle_outline, color: Colors.green),
+              title: const Text('Create New Group'),
+              onTap: () {
+                Navigator.pop(context);
+                _showCreateGroupDialog(context);
+              },
+            ),
+
+            const Divider(),
+
+            ListTile(
+              leading: const Icon(Icons.mail_outline, color: Colors.orange),
+              title: const Text('Received Invitations'),
               trailing: authCtrl.pendingInvites.isNotEmpty
-                  ? CircleAvatar(radius: 10, child: Text("${authCtrl.pendingInvites.length}", style: const TextStyle(fontSize: 10)))
+                  ? CircleAvatar(
+                radius: 11,
+                backgroundColor: Colors.red,
+                child: Text('${authCtrl.pendingInvites.length}',
+                    style: const TextStyle(fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
+              )
                   : null,
-              onTap: () => showReceivedInvitationsDialog(context),
+              onTap: () {
+                Navigator.pop(context);
+                showReceivedInvitationsDialog(context);
+              },
+            ),
+
+            // 5. FORCE SYNC
+            ListTile(
+              leading: const Icon(Icons.sync),
+              title: const Text('Force Sync'),
+              subtitle: Text(
+                  'Account: ${authCtrl.userProfile?.email ?? "Not Linked"}'),
+              onTap: () {
+                Navigator.pop(context);
+                groupCtrl.loadGroups(); // Trigger reload global
+              },
+            ),
+
+            // 6. SETTINGS
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/settings');
+              },
             ),
           ],
         ),

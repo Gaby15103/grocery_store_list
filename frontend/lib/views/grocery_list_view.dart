@@ -273,7 +273,15 @@ class _GroceryListViewState extends State<GroceryListView> {
         if (!hasExtra) {
           return ListTile(
             leading: _buildLeading(item, itemCtrl, groupId),
-            title: Text(item.name, style: _getItemStyle(item.status)),
+            title: Row(
+              children: [
+                Flexible(child: Text(item.name, style: _getItemStyle(item.status), overflow: TextOverflow.ellipsis)),
+                if (item.note?.isNotEmpty ?? false)
+                  const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.info_outline, size: 16, color: Colors.blueGrey)),
+                if (item.imagePath?.isNotEmpty ?? false)
+                  const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.image_outlined, size: 16, color: Colors.blueGrey)),
+              ],
+            ),
             subtitle: isDiscarded ? Text(L10n.of(context, 'item_discarded'), style: const TextStyle(color: Colors.orange, fontSize: 12)) : null,
             trailing: _buildTrailing(item, itemCtrl, groupId),
           );
@@ -317,7 +325,15 @@ class _GroceryListViewState extends State<GroceryListView> {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         leading: _buildLeading(item, itemCtrl, groupId),
-        title: Text(item.name, style: _getItemStyle(item.status)),
+        title: Row(
+          children: [
+            Flexible(child: Text(item.name, style: _getItemStyle(item.status), overflow: TextOverflow.ellipsis)),
+            if (item.note?.isNotEmpty ?? false)
+              const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.info_outline, size: 16, color: Colors.blueGrey)),
+            if (item.imagePath?.isNotEmpty ?? false)
+              const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.image_outlined, size: 16, color: Colors.blueGrey)),
+          ],
+        ),
         trailing: _buildTrailing(item, itemCtrl, groupId),
         children: [
           Padding(
@@ -325,17 +341,13 @@ class _GroceryListViewState extends State<GroceryListView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (item.note?.isNotEmpty ?? false) Text(item.note!, style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
+                if (item.note?.isNotEmpty ?? false)
+                  Text(item.note!, style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
                 if (item.imagePath?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 10),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      '${AppConfig.apiUrl}/${item.imagePath}',
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => Image.file(File(item.imagePath!), width: double.infinity, fit: BoxFit.cover),
-                    ),
+                    child: _buildItemImage(item.imagePath!),
                   ),
                 ],
               ],
@@ -344,5 +356,31 @@ class _GroceryListViewState extends State<GroceryListView> {
         ],
       ),
     );
+  }
+
+  Widget _buildItemImage(String path) {
+    final bool isNetwork = path.startsWith('http') || !path.startsWith('/');
+
+    if (isNetwork) {
+      final String fullUrl = path.startsWith('http')
+          ? path
+          : '${AppConfig.apiUrl}/$path';
+
+      return Image.network(
+        fullUrl,
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50),
+      );
+    } else {
+      return Image.file(
+        File(path),
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 50),
+      );
+    }
   }
 }

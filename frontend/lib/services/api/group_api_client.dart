@@ -22,6 +22,14 @@ class GroupApiClient extends BaseApi {
     );
   }
 
+  Future<GroceryGroup> fetchGroup(String groupId) async {
+    return await request<GroceryGroup>(
+      method: 'GET',
+      path: '/groups/$groupId',
+      fromJson: (json) => GroceryGroup.fromJson(json),
+    );
+  }
+
   Future<GroceryGroup> createGroup(String name) async {
     return await request<GroceryGroup>(
       method: 'POST',

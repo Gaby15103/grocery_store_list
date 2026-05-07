@@ -96,7 +96,7 @@ void main() async {
   final authRepo = AuthRepository(AuthApiClient());
   final groupRepo = GroupRepository(GroupApiClient());
   final listRepo = ListRepository(ListApiClient());
-  final itemRepo = ItemRepository(ItemApiClient());
+  final itemRepo = ItemRepository(ItemApiClient(), GroupApiClient());
 
   runApp(
     MultiProvider(
@@ -270,6 +270,12 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
         final String language = box.get('language') ?? 'fr';
         final String themeModePref = box.get('themeMode') ?? 'system';
 
+        final String? colorSeedValue = box.get('colorSeed');
+        Color primaryColor = Colors.green; // Fallback
+        if (colorSeedValue != null) {
+          primaryColor = Color(int.parse(colorSeedValue));
+        }
+
         // Connect Socket if logged in
         if (auth.isLoggedIn && !_isSocketInitialized) {
           context.read<SocketService>().connect(auth.repository.getEmail()!);
@@ -281,8 +287,26 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
           scaffoldMessengerKey: scaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
           locale: Locale(language),
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('fr', ''),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           themeMode: _parseTheme(themeModePref),
-          // ... rest of your theme data ...
+          theme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: primaryColor,
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorSchemeSeed: primaryColor,
+            brightness: Brightness.dark,
+          ),
           home: auth.isLoggedIn ? const HomeView() : const SetupView(),
           routes: {
             '/settings': (context) => const SettingsView(),

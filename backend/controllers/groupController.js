@@ -10,6 +10,16 @@ exports.getGroups = async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 };
 
+exports.getGroup = async (req, res) => {
+    const { groupId } = req.params;
+    const email = req.headers['x-user-email'];
+    if (!email) return res.status(400).send("Email header missing");
+    try {
+        const group = await Group.findOne({ where: { id: groupId }});
+        res.json(group);
+    } catch (err) { res.status(500).send(err.message); }
+};
+
 exports.makePublic = async (req, res) => {
     const { groupId } = req.params;
     const userEmail = req.headers['x-user-email'];

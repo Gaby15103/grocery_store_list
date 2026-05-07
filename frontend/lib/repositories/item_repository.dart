@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:grocery_list/services/api/group_api_client.dart';
 import 'package:hive/hive.dart';
 import '../models/group.dart';
 import '../models/item.dart';
@@ -6,19 +7,21 @@ import '../services/api/item_api_client.dart';
 
 class ItemRepository {
   final ItemApiClient _api;
+  final GroupApiClient _grApi;
   final Box<GroceryGroup> _groupBox = Hive.box<GroceryGroup>('groups');
 
-  ItemRepository(this._api);
+  ItemRepository(this._api, this._grApi);
 
-  bool _isShared(String groupId) {
+  Future<bool> _isShared(String groupId) async {
     if (groupId == 'default') return false;
-    final group = _groupBox.get(groupId);
-    return group?.isShared ?? false;
+    var group = _groupBox.get(groupId);
+    group ??= await _grApi.fetchGroup(groupId);
+    return group.isShared;
   }
 
   /// GET: Absolute truth from server
   Future<List<GroceryItem>> getItems(String listId, String groupId) async {
-    if (_isShared(groupId)) {
+    if (await _isShared(groupId)) {
       return await _api.fetchItems(listId);
     }
     return []; // Logic for local groups can be added here later
@@ -32,7 +35,7 @@ class ItemRepository {
     String? note,
     File? imageFile,
   }) async {
-    if (!_isShared(groupId)) return;
+    if (!await _isShared(groupId)) return;
 
     String? finalImagePath;
     if (imageFile != null) {
@@ -55,7 +58,7 @@ class ItemRepository {
 
   /// PUT: Update the item
   Future<void> updateItem(GroceryItem item, String groupId) async {
-    if (_isShared(groupId)) {
+    if (await _isShared(groupId)) {
       await _api.updateItem(item, groupId);
     }
   }
@@ -72,7 +75,7 @@ class ItemRepository {
     item.name = newName;
     item.note = newNote;
 
-    if (!_isShared(groupId)) {
+    if (!await _isShared(groupId)) {
       if (shouldClearImage) {
         item.imagePath = null;
       } else if (newImageFile != null) {
@@ -96,7 +99,9 @@ class ItemRepository {
 
   /// DELETE: Remove from server
   Future<void> deleteItem(GroceryItem item) async {
-    if (_isShared(item.groupId) && item.id != null) {
+    print("is shared: ${_isShared(item.groupId)}");
+    print("id is not null: ${item.id != null}");
+    if (await _isShared(item.groupId) && item.id != null) {
       await _api.deleteItem(item.id!, item.name, item.listId, item.groupId);
     }
   }

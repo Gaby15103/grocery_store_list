@@ -127,7 +127,13 @@ class L10n {
 
       "delete_list_title": "Supprimer la liste",
       "delete_list_warning": "Êtes-vous sûr de vouloir supprimer cette liste ? Cette action est irréversible.",
-      "unauthorized_list_delete": "Vous n'avez pas l'autorisation de supprimer cette liste."
+      "unauthorized_list_delete": "Vous n'avez pas l'autorisation de supprimer cette liste.",
+
+      "notification_settings": "Paramètres de notification",
+      "notif_invites": "Invitations reçues",
+      "notif_list_created": "Nouvelles listes créées",
+      "notif_carry_over": "Reports d'articles (Carry over)",
+      "notif_items": "Ajouts et modifications d'articles",
     },
     'en': {
       // Home Screen
@@ -254,7 +260,13 @@ class L10n {
 
       "delete_list_title": "Delete List",
       "delete_list_warning": "Are you sure you want to delete this list? This action cannot be undone.",
-      "unauthorized_list_delete": "You do not have permission to delete this list."
+      "unauthorized_list_delete": "You do not have permission to delete this list.",
+
+      "notification_settings": "Notification Settings",
+      "notif_invites": "Received Invitations",
+      "notif_list_created": "New lists created",
+      "notif_carry_over": "Item Carry Over",
+      "notif_items": "Item additions and updates",
     },
   };
 

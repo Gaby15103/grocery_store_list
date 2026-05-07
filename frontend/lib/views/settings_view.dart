@@ -6,7 +6,6 @@ import '../controllers/auth_controller.dart';
 import '../utils/l10n.dart';
 
 class SettingsView extends StatefulWidget {
-
   const SettingsView({super.key});
 
   @override
@@ -119,14 +118,8 @@ class _SettingsViewState extends State<SettingsView> {
           _sectionHeader(L10n.of(context, 'sync_header')),
           ListTile(
             title: Text(L10n.of(context, 'your_sync_code')),
-            subtitle: Text(
-              auth.syncCode,
-              style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey
-              ),
-            ),
+            subtitle: Text(auth.syncCode,
+                style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.blueGrey)),
             trailing: IconButton(
                 icon: const Icon(Icons.copy),
                 onPressed: () {
@@ -142,8 +135,65 @@ class _SettingsViewState extends State<SettingsView> {
 
           const Divider(height: 40),
           _sectionHeader(L10n.of(context, 'appearance_header')),
-          // Language Dropdown... (kept same as your logic)
+
+          DropdownButtonFormField<String>(
+            value: box.get('language', defaultValue: 'fr'),
+            decoration: InputDecoration(
+              labelText: L10n.of(context, 'language_label'),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.language),
+            ),
+            items: [
+              DropdownMenuItem(value: 'fr', child: Text(L10n.of(context, 'lang_fr'))),
+              DropdownMenuItem(value: 'en', child: Text(L10n.of(context, 'lang_en'))),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  box.put('language', val);
+                });
+              }
+            },
+          ),
+
+          const SizedBox(height: 20),
+
           _buildThemeDropdown(box, context),
+
+          const SizedBox(height: 20),
+
+          Text(L10n.of(context, 'primary_color'), style: const TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 12),
+          ValueListenableBuilder(
+            valueListenable: box.listenable(keys: ['colorSeed']),
+            builder: (context, Box<String> box, _) {
+              final currentColorValue = box.get('colorSeed');
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  Colors.green, Colors.blue, Colors.red, Colors.orange,
+                  Colors.purple, Colors.teal, Colors.pink, Colors.blueGrey
+                ].map((color) {
+                  final isSelected = currentColorValue == color.value.toString();
+
+                  return GestureDetector(
+                    onTap: () {
+                      box.put('colorSeed', color.value.toString());
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: color,
+                      radius: 20,
+                      child: isSelected
+                          ? const Icon(Icons.check, color: Colors.white, size: 16)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
 
           const Divider(height: 40),
           _sectionHeader(L10n.of(context, 'danger_zone'), color: Colors.red),
@@ -166,24 +216,12 @@ class _SettingsViewState extends State<SettingsView> {
         prefixIcon: const Icon(Icons.brightness_6),
       ),
       items: [
-        DropdownMenuItem(
-          value: 'system',
-          child: Text(L10n.of(context, 'follow_system')),
-        ),
-        DropdownMenuItem(
-          value: 'light',
-          child: Text(L10n.of(context, 'light_mode')),
-        ),
-        DropdownMenuItem(
-          value: 'dark',
-          child: Text(L10n.of(context, 'dark_mode')),
-        ),
+        DropdownMenuItem(value: 'system', child: Text(L10n.of(context, 'follow_system'))),
+        DropdownMenuItem(value: 'light', child: Text(L10n.of(context, 'light_mode'))),
+        DropdownMenuItem(value: 'dark', child: Text(L10n.of(context, 'dark_mode'))),
       ],
       onChanged: (val) {
-        if (val != null) {
-          // This triggers the ValueListenableBuilder in main.dart
-          box.put('themeMode', val);
-        }
+        if (val != null) box.put('themeMode', val);
       },
     );
   }
@@ -218,7 +256,7 @@ class _SettingsViewState extends State<SettingsView> {
     );
 
     if (confirm == true) {
-      await context.read<AuthController>().logout(); // Controller handles the data wipe
+      await context.read<AuthController>().logout();
       if (context.mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }

@@ -1,5 +1,6 @@
 // lib/services/base_api.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import '../../config.dart';
@@ -50,7 +51,6 @@ abstract class BaseApi {
         default: // GET
           response = await client.get(uri, headers: await headers);
       }
-
       return handleResponse<T>(response, fromJson);
     } finally {
       client.close();
