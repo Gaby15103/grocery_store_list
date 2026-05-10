@@ -33,12 +33,11 @@ class ListApiClient extends BaseApi {
     );
   }
 
-  Future<void> archiveList(String listId) async {
-    return await request<void>(
+  Future<GroceryList> archiveList(String listId) async {
+    return await request<GroceryList>(
       method: 'POST',
       path: '/lists/$listId/archive',
-      body: {'isArchived': true},
-      fromJson: (_) {},
+      fromJson: (json) => GroceryList.fromJson(json),
     );
   }
 }

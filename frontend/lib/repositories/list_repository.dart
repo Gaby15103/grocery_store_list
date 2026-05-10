@@ -53,11 +53,9 @@ class ListRepository {
     for (var key in itemKeys) await _itemBox.delete(key);
   }
 
-  Future<GroceryList> archiveAndCarryOver(String listId, String newName, String groupId, bool isShared) async {
+  Future<GroceryList> archiveAndCarryOver(String listId, String groupId, bool isShared) async {
     if (isShared) {
-      await _apiClient.archiveList(listId);
-
-      final newList = await _apiClient.createList(newName, groupId);
+      final newList = await _apiClient.archiveList(listId);
 
       final oldList = _listBox.get(listId);
       if (oldList != null) {
@@ -76,8 +74,7 @@ class ListRepository {
       return newList;
     } else {
       final id = 'list_${DateTime.now().millisecondsSinceEpoch}';
-      final newList = GroceryList(id: id, name: newName, groupId: groupId, createdAt: DateTime.now());
-
+      final newList = GroceryList(id: id, name: "Liste (Cont.)", groupId: groupId, createdAt: DateTime.now());
       await _listBox.put(id, newList);
       return newList;
     }

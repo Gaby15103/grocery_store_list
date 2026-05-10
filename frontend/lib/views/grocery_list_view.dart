@@ -248,7 +248,7 @@ class _GroceryListViewState extends State<GroceryListView> {
               final newName = "${L10n.of(context, 'list_cont') ?? "List"} $dateStr";
 
               try {
-                await listCtrl.archiveAndCarryOver(widget.sessionId!, newName, groupId, isShared);
+                await listCtrl.archiveList(widget.sessionId!, groupId, isShared);
 
                 if (mounted) {
                   Navigator.pushReplacement(

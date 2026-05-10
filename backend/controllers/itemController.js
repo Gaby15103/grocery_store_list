@@ -143,7 +143,7 @@ exports.archiveAndCarryOver = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        const oldList = await List.findOne({ where: { id: listId} }, { transaction: t });
+        const oldList = await List.findByPk(listId, { transaction: t });
         if (!oldList) throw new Error('List not found');
 
         await oldList.update({ isArchived: true }, { transaction: t });
@@ -152,7 +152,7 @@ exports.archiveAndCarryOver = async (req, res) => {
         const newList = await List.create({
             id: newListId,
             name: `${oldList.name} (Cont.)`,
-            GroupId: oldList.groupId,
+            GroupId: oldList.GroupId,
             isArchived: false
         }, { transaction: t });
 
