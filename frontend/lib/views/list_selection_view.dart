@@ -23,7 +23,6 @@ class _ListSelectionViewState extends State<ListSelectionView> {
   @override
   void initState() {
     super.initState();
-    // Load lists as soon as the view opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final isShared = context.read<GroupController>().isCurrentGroupShared;
       context.read<ListController>().loadLists(widget.groupId, isShared);

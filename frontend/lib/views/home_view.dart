@@ -33,91 +33,99 @@ class HomeView extends StatelessWidget {
     final groupCtrl = context.watch<GroupController>();
     final authCtrl = context.watch<AuthController>();
 
-    return MainLayout(
-      title: L10n.of(context, 'dashboard'),
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "${L10n.of(context, 'welcome')} ${authCtrl.userProfile?.firstName ?? L10n.of(context, 'chef_fallback')}",
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Scaffold.of(context).openDrawer();
+      },
+      child: MainLayout(
+        title: L10n.of(context, 'dashboard'),
+        showBackButton: false,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${L10n.of(context, 'welcome')} ${authCtrl.userProfile?.firstName ?? L10n.of(context, 'chef_fallback')}",
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    Text(L10n.of(context, 'kitchen_status')),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  L10n.of(context, 'recent'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: groupCtrl.groups.take(5).length,
+                  itemBuilder: (context, index) => _buildRecentCard(context, groupCtrl.groups[index], groupCtrl),
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildStatusBanner(context, authCtrl),
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                child: Text(
+                  L10n.of(context, 'quick_access'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverGrid.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: [
+                  _buildActionCard(
+                    context,
+                    L10n.of(context, 'recipes'),
+                    Icons.menu_book,
+                    Colors.orange,
+                    _launchRecipeSite,
                   ),
-                  Text(L10n.of(context, 'kitchen_status')),
+                  _buildActionCard(
+                    context,
+                    L10n.of(context, 'invitations'),
+                    Icons.mail,
+                    Colors.blue,
+                        () => _showInvitations(context),
+                  ),
                 ],
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                L10n.of(context, 'recent'),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: groupCtrl.groups.take(5).length,
-                itemBuilder: (context, index) => _buildRecentCard(context, groupCtrl.groups[index], groupCtrl),
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildStatusBanner(context, authCtrl),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                L10n.of(context, 'quick_access'),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
-              children: [
-                _buildActionCard(
-                  context,
-                  L10n.of(context, 'recipes'),
-                  Icons.menu_book,
-                  Colors.orange,
-                  _launchRecipeSite,
-                ),
-                _buildActionCard(
-                  context,
-                  L10n.of(context, 'invitations'),
-                  Icons.mail,
-                  Colors.blue,
-                      () => _showInvitations(context),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
