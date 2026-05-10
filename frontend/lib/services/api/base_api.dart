@@ -1,14 +1,16 @@
 // lib/services/base_api.dart
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import '../../config.dart';
 import '../../utils.dart';
+import '../sync_manager.dart';
 
 abstract class BaseApi {
   final Utils _utils = Utils();
   final String baseUrl = AppConfig.apiUrl;
+  final SyncManager _syncManager = SyncManager();
 
   // This is shared by every service that extends BaseApi
   Future<Map<String, String>> get headers async {
@@ -19,6 +21,7 @@ abstract class BaseApi {
       'x-device-id': await _utils.getUniqueDeviceId()
     };
   }
+
 
   /// The Universal Request Wrapper
   /// [method]: 'GET', 'POST', 'PUT', 'DELETE'
@@ -52,8 +55,20 @@ abstract class BaseApi {
           response = await client.get(uri, headers: await headers);
       }
       return handleResponse<T>(response, fromJson);
+    } on SocketException {
+      _handleOffline(method, path, body);
+      throw Exception("Offline: Action queued.");
+    } on http.ClientException {
+      _handleOffline(method, path, body);
+      throw Exception("Connection lost: Action queued.");
     } finally {
       client.close();
+    }
+  }
+
+  void _handleOffline(String method, String path, dynamic body) {
+    if (method.toUpperCase() != 'GET') {
+      _syncManager.enqueue(method, path, body);
     }
   }
 
