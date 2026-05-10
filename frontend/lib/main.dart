@@ -1,7 +1,10 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:grocery_list/services/api/base_api.dart';
+import 'package:grocery_list/services/sync_manager.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart';
@@ -12,6 +15,7 @@ import 'config.dart';
 import 'models/group_list.dart';
 import 'models/item.dart';
 import 'models/group.dart';
+import 'models/sync_task.dart';
 import 'services/socket_service.dart';
 import 'services/notification_service.dart';
 
@@ -54,6 +58,7 @@ void main() async {
   Hive.registerAdapter(GroceryItemAdapter());
   Hive.registerAdapter(GroceryGroupAdapter());
   Hive.registerAdapter(GroceryListAdapter());
+  Hive.registerAdapter(SyncTaskAdapter());
 
   final box = await Hive.openBox<String>('metadata');
   final savedLang = box.get('language') ?? WidgetsBinding.instance.platformDispatcher.locale.languageCode;
@@ -89,6 +94,7 @@ void main() async {
     Hive.openBox<GroceryGroup>('groups'),
     Hive.openBox<GroceryItem>('items'),
     Hive.openBox<GroceryList>('lists'),
+    Hive.openBox<SyncTask>('sync_queue'),
   ]);
 
   // --- INITIALIZE SERVICES & REPOS ---
@@ -121,17 +127,20 @@ class GroceryApp extends StatefulWidget {
 
 class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   bool _isSocketInitialized = false;
+  late final SyncManager _syncManager;
 
   @override
   void initState() {
     super.initState();
+    _syncManager = SyncManager();
     WidgetsBinding.instance.addObserver(this);
 
-    // Pass the context-aware providers to your global listeners
     _setupGlobalListeners();
 
     if (!kIsWeb) {
       _setupNotificationTapHandler();
+
+      _setupConnectivityListener(_syncManager, AuthApiClient());
     }
   }
 
@@ -187,6 +196,15 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
       // 2. Logic for UI Refresh (The real MVC way)
       if (event.type == 'force_refresh' || event.type == 'group_deleted') {
         groupCtrl.loadGroups();
+      }
+    });
+  }
+
+  void _setupConnectivityListener(SyncManager syncManager, BaseApi api) {
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      if (results.isNotEmpty && !results.contains(ConnectivityResult.none)) {
+        debugPrint("🌐 Internet restored, processing sync queue...");
+        syncManager.processQueue(api);
       }
     });
   }
