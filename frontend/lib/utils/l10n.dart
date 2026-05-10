@@ -134,6 +134,12 @@ class L10n {
       "notif_list_created": "Nouvelles listes créées",
       "notif_carry_over": "Reports d'articles (Carry over)",
       "notif_items": "Ajouts et modifications d'articles",
+
+      'archive_title': 'Terminer les courses ?',
+      'archive_confirm': 'Archiver',
+      'archive_content': 'L\'archivage déplacera {bought} articles vers l\'historique.\n{pending} articles seront reportés sur une nouvelle liste.',
+      'list_cont': 'Liste du',
+      'archive_failed': 'Échec de l\'archivage',
     },
     'en': {
       // Home Screen
@@ -267,6 +273,12 @@ class L10n {
       "notif_list_created": "New lists created",
       "notif_carry_over": "Item Carry Over",
       "notif_items": "Item additions and updates",
+
+      'archive_title': 'Finish Shopping?',
+      'archive_confirm': 'Archive',
+      'archive_content': 'Archiving will move {bought} items to history.\n{pending} items will carry over to a new list.',
+      'list_cont': 'List from',
+      'archive_failed': 'Failed to archive',
     },
   };
 

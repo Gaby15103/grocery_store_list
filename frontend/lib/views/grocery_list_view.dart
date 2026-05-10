@@ -220,29 +220,37 @@ class _GroceryListViewState extends State<GroceryListView> {
     final boughtCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.bought).length;
     final pendingCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.pending).length;
 
+    String contentText = L10n.of(context, 'archive_content') ??
+        "Archiving will move {bought} items to history.\n{pending} items will carry over to a new list.";
+
+    contentText = contentText
+        .replaceAll('{bought}', boughtCount.toString())
+        .replaceAll('{pending}', pendingCount.toString());
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(L10n.of(context, 'archive_title') ?? "Finish Shopping?"),
-        content: Text(
-            "Archiving will move $boughtCount items to history.\n"
-                "$pendingCount items will carry over to a new list."
-        ),
+        content: Text(contentText),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L10n.of(context, 'cancel'))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(L10n.of(context, 'cancel') ?? "Cancel")
+          ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(ctx);
 
               final isShared = groupCtrl.isCurrentGroupShared;
               final groupId = groupCtrl.activeGroupId ?? 'default';
-              final newName = "${L10n.of(context, 'list_cont')} ${DateTime.now().day}/${DateTime.now().month}";
+
+              final dateStr = "${DateTime.now().day}/${DateTime.now().month}";
+              final newName = "${L10n.of(context, 'list_cont') ?? "List"} $dateStr";
 
               try {
                 await listCtrl.archiveAndCarryOver(widget.sessionId!, newName, groupId, isShared);
 
                 if (mounted) {
-                  // Push replacement so they can't go "back" to the archived list
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -251,8 +259,9 @@ class _GroceryListViewState extends State<GroceryListView> {
                   );
                 }
               } catch (e) {
+                final errorPrefix = L10n.of(context, 'archive_failed') ?? "Failed to archive";
                 ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to archive: $e"))
+                    SnackBar(content: Text("$errorPrefix: $e"))
                 );
               }
             },
