@@ -25,22 +25,45 @@ class ItemController extends ChangeNotifier {
     print("📍 UI State: User is now viewing list: $listId");
   }
 
-  Future<void> loadItems(String listId, String groupId) async {
-    _isLoading = true;
-    _errorMessage = null;
+  // --- CORE OPTIMISTIC METHODS ---
+
+  /// Toggle status happens INSTANTLY in the UI
+  Future<void> toggleStatus(GroceryItem item, String groupId, {String? forceStatus}) async {
+    final oldStatus = item.status;
+
+    // Determine target
+    ItemStatus targetStatus;
+    if (forceStatus != null) {
+      targetStatus = ItemStatus.values.firstWhere(
+            (e) => e.name == forceStatus,
+        orElse: () => ItemStatus.pending,
+      );
+    } else {
+      targetStatus = (oldStatus == ItemStatus.bought) ? ItemStatus.pending : ItemStatus.bought;
+    }
+
+    // 1. Optimistic Update
+    item.status = targetStatus;
     notifyListeners();
 
     try {
-      _currentItems = await repository.getItems(listId, groupId);
+      await repository.updateItem(item, groupId);
+      _errorMessage = null;
     } catch (e) {
-      _errorMessage = "Offline: Unable to load items.";
-      _currentItems = [];
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      // 2. Handle specific network failures (Queueing)
+      if (e.toString().contains("queued") || e.toString().contains("Offline")) {
+        debugPrint("Sync pending: Status change added to queue.");
+        // We DON'T rollback here because the SyncManager will handle it eventually
+      } else {
+        // 3. Rollback for permanent server errors
+        item.status = oldStatus;
+        _errorMessage = "Sync failed: Server rejected the change.";
+        notifyListeners();
+      }
     }
   }
 
+  /// Add item without blocking the whole screen
   Future<void> addItem({
     required String name,
     required String listId,
@@ -48,7 +71,17 @@ class ItemController extends ChangeNotifier {
     String? note,
     File? imageFile,
   }) async {
-    _isLoading = true;
+    final tempItem = GroceryItem(
+      id: -1,
+      name: name,
+      listId: listId,
+      groupId: groupId,
+      status: ItemStatus.pending,
+      createdAt: DateTime.now(),
+      note: note,
+    );
+
+    _currentItems.insert(0, tempItem);
     notifyListeners();
 
     try {
@@ -59,54 +92,51 @@ class ItemController extends ChangeNotifier {
         note: note,
         imageFile: imageFile,
       );
+
       await loadItems(listId, groupId);
     } catch (e) {
-      _errorMessage = "Failed to add item to server.";
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (e.toString().contains("queued") || e.toString().contains("Offline")) {
+      } else {
+        _currentItems.remove(tempItem);
+        _errorMessage = "Failed to add item.";
+        notifyListeners();
+      }
     }
   }
+  /// Delete item instantly
+  Future<void> removeItem(GroceryItem item, String groupId) async {
+    final index = _currentItems.indexOf(item);
 
-  Future<void> toggleStatus(GroceryItem item, String groupId, {String? forceStatus}) async {
-    final oldStatus = item.status;
-
-    ItemStatus targetStatus;
-    if (forceStatus != null) {
-      targetStatus = ItemStatus.values.firstWhere(
-            (e) => e.name == forceStatus,
-        orElse: () => ItemStatus.pending,
-      );
-    } else {
-      targetStatus = (oldStatus == ItemStatus.bought)
-          ? ItemStatus.pending
-          : ItemStatus.bought;
-    }
-
-    item.status = targetStatus;
+    // 1. Optimistic Remove
+    _currentItems.remove(item);
     notifyListeners();
 
     try {
-      await repository.updateItem(item, groupId);
-      _errorMessage = null;
+      await repository.deleteItem(item, groupId);
     } catch (e) {
-      debugPrint("Toggle failed: $e");
-      _errorMessage = "Sync failed: Status could not be saved.";
-      item.status = oldStatus;
-      notifyListeners();
-      rethrow;
+      if (e.toString().contains("queued") || e.toString().contains("Offline")) {
+        // Success (it's queued)
+      } else {
+        // Rollback if server refused
+        if (index != -1) _currentItems.insert(index, item);
+        _errorMessage = "Could not delete item.";
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> updateItem(GroceryItem item, String groupId) async {
+  // --- STANDARD METHODS ---
+
+  Future<void> loadItems(String listId, String groupId) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
-      await repository.updateItem(item, groupId);
-      await loadItems(item.listId, groupId);
+      _currentItems = await repository.getItems(listId, groupId);
     } catch (e) {
-      _errorMessage = "Update failed.";
+      _errorMessage = "Offline: Showing cached items.";
+      // Note: Items are still in _currentItems from Hive in repo
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -121,6 +151,7 @@ class ItemController extends ChangeNotifier {
     bool shouldClearImage = false,
     String? groupId,
   }) async {
+    // Details updates usually involve images/heavy text, so we keep the loader
     _isLoading = true;
     notifyListeners();
 
@@ -133,23 +164,11 @@ class ItemController extends ChangeNotifier {
         shouldClearImage: shouldClearImage,
         groupId: groupId ?? 'default',
       );
-
       await loadItems(item.listId, groupId ?? 'default');
     } catch (e) {
       _errorMessage = "Update failed: $e";
     } finally {
       _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> removeItem(GroceryItem item, String groupId) async {
-    try {
-      await repository.deleteItem(item, groupId);
-      _currentItems.removeWhere((i) => i.id == item.id);
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = "Could not delete item.";
       notifyListeners();
     }
   }

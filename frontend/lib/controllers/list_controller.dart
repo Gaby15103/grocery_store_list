@@ -42,4 +42,20 @@ class ListController extends ChangeNotifier {
     await repository.removeList(listId, isShared);
     await loadLists(groupId, isShared);
   }
+
+  Future<void> archiveAndCarryOver(String listId, String newName, String groupId, bool isShared) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final newList = await repository.archiveAndCarryOver(listId, newName, groupId, isShared);
+      setOpenedList(newList.id);
+      await loadLists(groupId, isShared);
+    } catch (e) {
+      debugPrint("Archive Error: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

@@ -35,8 +35,8 @@ class ListApiClient extends BaseApi {
 
   Future<void> archiveList(String listId) async {
     return await request<void>(
-      method: 'PATCH',
-      path: '/lists/$listId',
+      method: 'POST',
+      path: '/lists/$listId/archive',
       body: {'isArchived': true},
       fromJson: (_) {},
     );

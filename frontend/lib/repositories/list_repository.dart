@@ -52,4 +52,34 @@ class ListRepository {
     final itemKeys = _itemBox.values.where((i) => i.listId == listId).map((e) => e.id);
     for (var key in itemKeys) await _itemBox.delete(key);
   }
+
+  Future<GroceryList> archiveAndCarryOver(String listId, String newName, String groupId, bool isShared) async {
+    if (isShared) {
+      await _apiClient.archiveList(listId);
+
+      final newList = await _apiClient.createList(newName, groupId);
+
+      final oldList = _listBox.get(listId);
+      if (oldList != null) {
+        oldList.isArchived = true;
+        await oldList.save();
+      }
+
+      await _listBox.put(newList.id, newList);
+
+      final pendingItems = _itemBox.values.where((i) => i.listId == listId && i.status == ItemStatus.pending);
+      for (var item in pendingItems) {
+        item.listId = newList.id;
+        await item.save();
+      }
+
+      return newList;
+    } else {
+      final id = 'list_${DateTime.now().millisecondsSinceEpoch}';
+      final newList = GroceryList(id: id, name: newName, groupId: groupId, createdAt: DateTime.now());
+
+      await _listBox.put(id, newList);
+      return newList;
+    }
+  }
 }

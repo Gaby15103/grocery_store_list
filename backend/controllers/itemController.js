@@ -137,3 +137,42 @@ exports.syncItems = async (req, res) => {
         res.status(200).json({ message: 'Sync successful' });
     } catch (error) { res.status(500).json({ error: error.message }); }
 };
+
+exports.archiveAndCarryOver = async (req, res) => {
+    const { groupId, listId } = req.params;
+    const t = await sequelize.transaction();
+
+    try {
+        const oldList = await List.findOne({ where: { id: listId, GroupId: groupId } }, { transaction: t });
+        if (!oldList) throw new Error('List not found');
+
+        await oldList.update({ isArchived: true }, { transaction: t });
+
+        const newListId = `list_${Date.now()}`;
+        const newList = await List.create({
+            id: newListId,
+            name: `${oldList.name} (Cont.)`,
+            GroupId: groupId,
+            isArchived: false
+        }, { transaction: t });
+
+        await Item.update(
+            { ListId: newListId },
+            {
+                where: {
+                    ListId: listId,
+                    status: 'pending'
+                },
+                transaction: t
+            }
+        );
+
+        await t.commit();
+
+        res.status(201).json(newList);
+
+    } catch (error) {
+        await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};

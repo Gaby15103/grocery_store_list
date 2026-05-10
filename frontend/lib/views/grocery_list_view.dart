@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config.dart';
+import '../controllers/list_controller.dart';
 import '../models/item.dart';
 import '../widgets/main_layout.dart';
 import '../utils/l10n.dart';
@@ -211,6 +212,57 @@ class _GroceryListViewState extends State<GroceryListView> {
     );
   }
 
+  void _showArchiveDialog() {
+    final itemCtrl = context.read<ItemController>();
+    final listCtrl = context.read<ListController>();
+    final groupCtrl = context.read<GroupController>();
+
+    final boughtCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.bought).length;
+    final pendingCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.pending).length;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(L10n.of(context, 'archive_title') ?? "Finish Shopping?"),
+        content: Text(
+            "Archiving will move $boughtCount items to history.\n"
+                "$pendingCount items will carry over to a new list."
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(L10n.of(context, 'cancel'))),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx); // Close dialog
+
+              final isShared = groupCtrl.isCurrentGroupShared;
+              final groupId = groupCtrl.activeGroupId ?? 'default';
+              final newName = "${L10n.of(context, 'list_cont')} ${DateTime.now().day}/${DateTime.now().month}";
+
+              try {
+                await listCtrl.archiveAndCarryOver(widget.sessionId!, newName, groupId, isShared);
+
+                if (mounted) {
+                  // Push replacement so they can't go "back" to the archived list
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GroceryListView(sessionId: listCtrl.currentListId),
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to archive: $e"))
+                );
+              }
+            },
+            child: Text(L10n.of(context, 'archive_confirm') ?? "Archive"),
+          ),
+        ],
+      ),
+    );
+  }
+
   TextStyle _getItemStyle(ItemStatus status) {
     if (status == ItemStatus.bought) {
       return const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey, fontSize: 16);
@@ -236,21 +288,30 @@ class _GroceryListViewState extends State<GroceryListView> {
 
     return MainLayout(
       title: L10n.of(context, 'items_title'),
+      showBackButton: true,
       actions: [
         IconButton(
           icon: const Icon(Icons.archive_outlined),
           tooltip: "Finish & Carry Over",
-          onPressed: () {
-          },
+          onPressed: _showArchiveDialog,
         ),
       ],
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
         child: const Icon(Icons.add_shopping_cart),
       ),
-      child: itemCtrl.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildItemList(itemCtrl, effectiveGroupId),
+      child: Column(
+        children: [
+          if (itemCtrl.isLoading)
+            const LinearProgressIndicator(minHeight: 2),
+
+          Expanded(
+            child: itemCtrl.currentItems.isEmpty && itemCtrl.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildItemList(itemCtrl, effectiveGroupId),
+          ),
+        ],
+      ),
     );
   }
 
@@ -293,7 +354,16 @@ class _GroceryListViewState extends State<GroceryListView> {
   }
 
   Widget _buildLeading(GroceryItem item, ItemController itemCtrl, String groupId) {
+    if (item.id == -1) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
     if (item.status == ItemStatus.discarded) return const Icon(Icons.delete_sweep, color: Colors.orange);
+
     return Checkbox(
       value: item.status == ItemStatus.bought,
       onChanged: (_) => itemCtrl.toggleStatus(item, groupId),
