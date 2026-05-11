@@ -73,3 +73,4 @@ yarn-error.log*
 android/key.properties
 
 firebase-service-account.json
+backend/public/uploads/*
