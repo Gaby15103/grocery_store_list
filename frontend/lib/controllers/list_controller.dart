@@ -43,12 +43,12 @@ class ListController extends ChangeNotifier {
     await loadLists(groupId, isShared);
   }
 
-  Future<void> archiveList(String listId, String groupId, bool isShared) async {
+  Future<void> archiveList(String listId, String newName, String groupId, bool isShared) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final newList = await repository.archiveAndCarryOver(listId, groupId, isShared);
+      final newList = await repository.archiveAndCarryOver(listId, newName, groupId, isShared);
 
       setOpenedList(newList.id);
 

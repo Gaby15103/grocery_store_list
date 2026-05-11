@@ -53,9 +53,9 @@ class ListRepository {
     for (var key in itemKeys) await _itemBox.delete(key);
   }
 
-  Future<GroceryList> archiveAndCarryOver(String listId, String groupId, bool isShared) async {
+  Future<GroceryList> archiveAndCarryOver(String listId, String newName, String groupId, bool isShared) async {
     if (isShared) {
-      final newList = await _apiClient.archiveList(listId);
+      final newList = await _apiClient.archiveList(listId, newName);
 
       final oldList = _listBox.get(listId);
       if (oldList != null) {

@@ -140,6 +140,7 @@ exports.syncItems = async (req, res) => {
 
 exports.archiveAndCarryOver = async (req, res) => {
     const { listId } = req.params;
+    const { newName } = req.body;
     const t = await sequelize.transaction();
 
     try {
@@ -151,7 +152,7 @@ exports.archiveAndCarryOver = async (req, res) => {
         const newListId = `list_${Date.now()}`;
         const newList = await List.create({
             id: newListId,
-            name: `${oldList.name} (Cont.)`,
+            name: newName || `${oldList.name} (Cont.)`,
             GroupId: oldList.GroupId,
             isArchived: false
         }, { transaction: t });

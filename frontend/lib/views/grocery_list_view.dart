@@ -219,6 +219,11 @@ class _GroceryListViewState extends State<GroceryListView> {
 
     final boughtCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.bought).length;
     final pendingCount = itemCtrl.currentItems.where((i) => i.status == ItemStatus.pending).length;
+    
+    final dateStr = "${DateTime.now().day}/${DateTime.now().month}";
+    final defaultName = "${L10n.of(context, 'list_cont') ?? "List"} $dateStr";
+
+    final TextEditingController nameController = TextEditingController(text: defaultName);
 
     String contentText = L10n.of(context, 'archive_content') ??
         "Archiving will move {bought} items to history.\n{pending} items will carry over to a new list.";
@@ -231,7 +236,21 @@ class _GroceryListViewState extends State<GroceryListView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(L10n.of(context, 'archive_title') ?? "Finish Shopping?"),
-        content: Text(contentText),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(contentText),
+            const SizedBox(height: 20),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: L10n.of(context, 'new_list_name_hint') ?? "New list name",
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -239,16 +258,16 @@ class _GroceryListViewState extends State<GroceryListView> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final chosenName = nameController.text.trim();
+              final finalName = chosenName.isNotEmpty ? chosenName : defaultName;
+
               Navigator.pop(ctx);
 
               final isShared = groupCtrl.isCurrentGroupShared;
               final groupId = groupCtrl.activeGroupId ?? 'default';
 
-              final dateStr = "${DateTime.now().day}/${DateTime.now().month}";
-              final newName = "${L10n.of(context, 'list_cont') ?? "List"} $dateStr";
-
               try {
-                await listCtrl.archiveList(widget.sessionId!, groupId, isShared);
+                await listCtrl.archiveList(widget.sessionId!, finalName, groupId, isShared);
 
                 if (mounted) {
                   Navigator.pushReplacement(
