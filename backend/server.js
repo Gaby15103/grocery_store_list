@@ -9,6 +9,14 @@ const { initSockets } = require('./sockets');
 const app = express();
 const server = http.createServer(app);
 const io = initSockets(server);
+const admin = require('firebase-admin');
+const serviceAccount = require('backend/firebase-service-account.json');
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+module.exports = admin;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

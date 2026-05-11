@@ -11,6 +11,10 @@ const User = sequelize.define('User', {
         type: DataTypes.JSONB,
         defaultValue: [],
         allowNull: false
+    },
+    deviceTokens: {
+        type: DataTypes.JSONB,
+        defaultValue: {},
     }
 });
 

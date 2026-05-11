@@ -71,3 +71,5 @@ yarn-error.log*
 .docker/
 
 android/key.properties
+
+firebase-service-account.json

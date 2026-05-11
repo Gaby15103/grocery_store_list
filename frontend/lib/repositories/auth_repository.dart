@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive/hive.dart';
 import '../models/group.dart';
 import '../models/group_list.dart';
@@ -71,6 +72,10 @@ class AuthRepository {
     await Hive.box<GroceryList>('lists').clear();
     await _metaBox.clear();
   }
+
+  Future<void> saveToken(String token) async {
+    await _api.updateFcmToken(token);
+    }
 
   Future<User> fetchProfile() async => await _api.getMe();
 

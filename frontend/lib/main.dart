@@ -1,14 +1,17 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:grocery_list/services/api/base_api.dart';
 import 'package:grocery_list/services/sync_manager.dart';
+import 'package:grocery_list/utils/l10n.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart';
 import 'package:provider/provider.dart';
+import 'package:workmanager/workmanager.dart';
 
 // Your existing imports
 import 'config.dart';
@@ -43,8 +46,42 @@ import 'views/grocery_list_view.dart';
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  // 1. Initialize Hive for the background process
+  await Hive.initFlutter();
+  final metaBox = await Hive.openBox<String>('metadata');
+  final String lang = metaBox.get('language') ?? 'fr';
+
+  // 2. Initialize your existing notification service
+  await NotificationService.init();
+
+  // 3. Extract data sent by your server
+  final String type = message.data['type'] ?? 'item_added';
+  final String itemName = message.data['itemName'] ?? '';
+  final String senderName = message.data['senderName'] ?? '';
+
+  // 4. Localize using the static method we added to L10n
+  String title = L10n.getStatic(type, lang); // 'item_added'
+  String body = L10n.getStatic('${type}_body', lang)
+      .replaceAll('{user}', senderName)
+      .replaceAll('{item}', itemName);
+
+  // 5. Show the notification
+  await NotificationService.showPhoneNotification(
+    id: message.hashCode,
+    title: title,
+    body: body,
+    payload: message.data['listId'],
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+
   await AppConfig.init();
 
   try {
@@ -52,6 +89,8 @@ void main() async {
   } catch (e) {
     debugPrint("Dotenv load failed: $e");
   }
+
+
 
   await Hive.initFlutter();
   Hive.registerAdapter(ItemStatusAdapter());
@@ -69,24 +108,6 @@ void main() async {
     await NotificationService.init(
       channelName: isFrench ? 'Mises à jour des courses' : 'Grocery Updates',
       channelDesc: isFrench ? 'Changements dans les listes' : 'List changes',
-    );
-
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'grocery_sync_service',
-        channelName: 'Grocery Master Sync',
-        channelDescription: 'Maintains connection for real-time updates.',
-        channelImportance: NotificationChannelImportance.LOW,
-        priority: NotificationPriority.LOW,
-      ),
-      iosNotificationOptions: const IOSNotificationOptions(),
-      foregroundTaskOptions: const ForegroundTaskOptions(
-        interval: 5000,
-        isOnceEvent: false,
-        autoRunOnBoot: true,
-        allowWakeLock: true,
-        allowWifiLock: true,
-      ),
     );
   }
 
@@ -129,11 +150,20 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   bool _isSocketInitialized = false;
   late final SyncManager _syncManager;
 
+
   @override
   void initState() {
     super.initState();
     _syncManager = SyncManager();
     WidgetsBinding.instance.addObserver(this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthController>();
+
+      if (auth.repository.getEmail() != null) {
+        auth.syncTokenWithServer();
+      }
+    });
 
     _setupGlobalListeners();
 
@@ -173,18 +203,11 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
     });
   }
 
+
   void _setupGlobalListeners() {
     final socket = context.read<SocketService>();
     final groupCtrl = context.read<GroupController>();
     final itemCtrl = context.read<ItemController>();
-
-    // Start Foreground Service - Mobile Only
-    if (!kIsWeb && !_isSocketInitialized) {
-      FlutterForegroundTask.startService(
-        notificationTitle: 'Grocery Master',
-        notificationText: 'Sync service is active',
-      );
-    }
 
     // Handle incoming socket events globally
     socket.eventStream.listen((event) {

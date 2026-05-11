@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hive/hive.dart';
 
 class NotificationService {
   static final _notifications = FlutterLocalNotificationsPlugin();
@@ -16,7 +19,7 @@ class NotificationService {
 
     const initSettings = InitializationSettings(
       android: androidSettings,
-      iOS: darwinSettings, 
+      iOS: darwinSettings,
     );
     await _notifications.initialize(
       initSettings,
@@ -65,5 +68,24 @@ class NotificationService {
       ),
       payload: payload,
     );
+  }
+
+  static Future<void> syncFcmToken(String email) async {
+    final fcm = FirebaseMessaging.instance;
+    final metaBox = Hive.box<String>('metadata');
+
+    String? token = await fcm.getToken();
+    if (token == null) return;
+
+    String? lastToken = metaBox.get('last_fcm_token');
+    if (token != lastToken) {
+      debugPrint("📡 Sending new FCM token to Arch server...");
+
+      try {
+        await metaBox.put('last_fcm_token', token);
+      } catch (e) {
+        debugPrint("❌ Failed to sync FCM token: $e");
+      }
+    }
   }
 }

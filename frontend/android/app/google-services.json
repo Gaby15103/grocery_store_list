@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "795185183313",
+    "project_id": "grocery-master-98f71",
+    "storage_bucket": "grocery-master-98f71.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795185183313:android:8185c8eeabff8a7b429670",
+        "android_client_info": {
+          "package_name": "org.gaby15103.grocery_master"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuWR6eNF6C9NZgzLBkHD18p3-Bb3G3xfo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

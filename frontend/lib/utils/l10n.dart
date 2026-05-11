@@ -140,6 +140,9 @@ class L10n {
       'archive_content': 'L\'archivage déplacera {bought} articles vers l\'historique.\n{pending} articles seront reportés sur une nouvelle liste.',
       'list_cont': 'Liste du',
       'archive_failed': 'Échec de l\'archivage',
+
+      'item_deleted': 'Article supprimé',
+      'item_deleted_body': '{item} a été retiré de la liste.',
     },
     'en': {
       // Home Screen
@@ -279,6 +282,9 @@ class L10n {
       'archive_content': 'Archiving will move {bought} items to history.\n{pending} items will carry over to a new list.',
       'list_cont': 'List from',
       'archive_failed': 'Failed to archive',
+
+      'item_deleted': 'Item Removed',
+      'item_deleted_body': '{item} was removed from the list.',
     },
   };
 
@@ -293,5 +299,17 @@ class L10n {
     }
 
     return _localizedValues[languageCode]![key] ?? key;
+  }
+
+  /// NEW: Static method for Background Tasks (no context)
+  /// Usage: L10n.getStatic('item_added', langCode)
+  static String getStatic(String key, String languageCode) {
+    return _get(languageCode, key);
+  }
+
+  /// Internal helper to DRY up the logic
+  static String _get(String lang, String key) {
+    String code = _localizedValues.containsKey(lang) ? lang : 'fr';
+    return _localizedValues[code]![key] ?? key;
   }
 }

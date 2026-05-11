@@ -100,4 +100,13 @@ class AuthApiClient extends BaseApi {
       fromJson: (json) => (json as List).map((u) => u['email'] as String).toList(),
     );
   }
+
+  Future<void> updateFcmToken(String  token) async {
+    await request<void>(
+      method: 'PATCH',
+      path: '/users/me/fcm-token',
+      body: {'token': token},
+      fromJson: (_) {},
+    );
+  }
 }

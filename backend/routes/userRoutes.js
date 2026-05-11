@@ -8,5 +8,6 @@ router.put('/profile', userCtrl.updateProfile);
 router.post('/link', userCtrl.linkAccount);
 router.get('/contacts', userCtrl.getContacts);
 router.get('/me', userCtrl.getUser);
+router.patch('/me/fcm-token', userCtrl.updateFcmToken);
 router.get('/profile/:email', userCtrl.getUserProfile);
 module.exports = router;

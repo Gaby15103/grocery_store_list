@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/user.dart';
@@ -91,6 +92,24 @@ class AuthController extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> syncTokenWithServer() async {
+    final email = repository.getEmail();
+    if (email == null) return; // Not "logged in" yet
+
+    try {
+      final fcm = FirebaseMessaging.instance;
+      String? token = await fcm.getToken();
+
+      if (token != null) {
+        // This is where it actually hits your DB
+        await repository.saveToken(token);
+        debugPrint("✅ FCM Token synced to DB for $email");
+      }
+    } catch (e) {
+      debugPrint("❌ Token sync failed: $e");
     }
   }
 

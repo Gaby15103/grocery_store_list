@@ -1,4 +1,6 @@
 const { List, Item, sequelize, User, Group} = require('../models');
+import {sendPushToGroup} from '../utils/push-notifications'
+
 
 exports.createList = async (req, res) => {
     const { id, name, GroupId, createdAt } = req.body;
@@ -55,20 +57,17 @@ exports.getListItems = async (req, res) => {
 
 exports.createItem = async (req, res) => {
     const { name, status, listId, groupId, note, imagePath } = req.body;
+    const senderEmail = req.headers['x-user-email'];
     try {
         const item = await Item.create({ name, status, ListId: listId, note, imagePath });
         if (groupId) {
-            req.io.to(groupId).emit('item_added', {
-                ...item.toJSON(),
-                listId: item.ListId
-            });
-            let user = await User.findOne({ email: req.headers['x-user-email'] });
-            req.io.to(groupId).emit('notification', {
+            req.io.to(groupId).emit('item_added', { ...item.toJSON(), listId: item.ListId });
+
+            await sendPushToGroup(groupId, senderEmail, {
                 type: 'item_added',
-                listId: listId,
-                title: 'New Item Added ➕',
-                message: `${user.firstName || 'Someone'} added ${name} to the list.`,
-                data: { name, listId }
+                itemName: name,
+                listId: listId.toString(),
+                senderName: 'Someone'
             });
         }
         res.status(201).json(item);
@@ -77,17 +76,15 @@ exports.createItem = async (req, res) => {
 exports.deleteItem = async (req, res) => {
     const { itemId } = req.params;
     const { name, listId, groupId } = req.body;
+    const senderEmail = req.headers['x-user-email'];
     try {
         await Item.destroy({ where: { id: itemId } });
         if (groupId) {
             req.io.to(groupId).emit('item_deleted', { name, listId });
-            let user = await User.findOne({ email: req.headers['x-user-email'] });
-            req.io.to(groupId).emit('notification', {
+            sendPushToGroup(groupId, senderEmail, {
                 type: 'item_deleted',
-                listId: listId,
-                title: 'New Item Deleted',
-                message: `${user.firstName || 'Someone'} deleted ${name} from the list.`,
-                data: { name, listId }
+                itemName: name,
+                listId: listId.toString()
             });
         }
         res.status(200).json({ message: "Deleted" });
@@ -96,6 +93,7 @@ exports.deleteItem = async (req, res) => {
 
 exports.updateItem = async (req, res) => {
     const { id, name, listId, status, groupId, note, imagePath  } = req.body;
+    const senderEmail = req.headers['x-user-email'];
     try {
         const [updatedRows] = await Item.update(
             { name, status, note, imagePath },
@@ -103,22 +101,14 @@ exports.updateItem = async (req, res) => {
         );
 
         if (updatedRows > 0 && groupId) {
-            req.io.to(groupId).emit('item_updated', {
-                id: id,
-                name: name,
-                listId: listId,
-                status: status,
-                note: note,
-                imagePath: imagePath
-            });
+            req.io.to(groupId).emit('item_updated', { id, name, listId, status, note, imagePath });
+
             if (status === 'bought') {
-                let user = await User.findOne({ email: req.headers['x-user-email'] });
-                req.io.to(groupId).emit('notification', {
+                await sendPushToGroup(groupId, senderEmail, {
                     type: 'item_updated',
-                    listId: listId,
-                    title: 'Item Purchased 🛒',
-                    message: `${user.firstName || 'Someone'} just bought ${name}!`,
-                    data: { id, name, listId }
+                    itemName: name,
+                    listId: listId.toString(),
+                    status: 'bought'
                 });
             }
         }
