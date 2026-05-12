@@ -8,7 +8,7 @@ class AppConfig {
   static Future<void> init() async {
     // 1. Web Configuration
     if (kIsWeb) {
-      apiUrl = kReleaseMode ? "https://apigrocery.gaby15103.org" : "http://localhost:3000";
+      apiUrl = kReleaseMode ? "https://apigrocery.gaby15103.org" : "https://apigrocery.gaby15103.org";
       return;
     }
 

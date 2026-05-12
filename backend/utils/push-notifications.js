@@ -4,14 +4,18 @@ const admin = require('firebase-admin');
 async function sendPushToGroup(groupId, senderEmail, data) {
     try {
         const group = await Group.findByPk(groupId, {
-            include: [{ model: User, as: 'users' }]
+            // Sequelize defaults to the capitalized plural of the model name
+            include: [{ model: User, as: 'Users' }]
         });
 
-        if (!group) return;
+        if (!group || !group.Users) {
+            console.log("No group or users found for push notification.");
+            return;
+        }
 
-        const tokens = group.users
-            .filter(u => u.email !== senderEmail && u.fcmToken)
-            .map(u => u.fcmToken);
+        const tokens = group.Users
+            .filter(u => u.email !== senderEmail && u.deviceTokens && Object.keys(u.deviceTokens).length > 0)
+            .flatMap(u => Object.values(u.deviceTokens)); // Get all tokens for that user
 
         if (tokens.length === 0) return;
 
