@@ -1,25 +1,30 @@
-const admin = require('../config/firebase-init'); // The key file we talked about
+const { User, Group } = require('../models');
+const admin = require('firebase-admin');
 
-export const sendPushToGroup = async (groupId, senderEmail, dataPayload) => {
+async function sendPushToGroup(groupId, senderEmail, data) {
     try {
-        const users = await User.findAll({
-            include: [{ model: Group, where: { id: groupId } }],
-            where: { email: { [Op.ne]: senderEmail } }
+        const group = await Group.findByPk(groupId, {
+            include: [{ model: User, as: 'users' }]
         });
 
+        if (!group) return;
 
-        const allTokens = users.flatMap(u => Object.values(u.deviceTokens || {}));
+        const tokens = group.users
+            .filter(u => u.email !== senderEmail && u.fcmToken)
+            .map(u => u.fcmToken);
 
-        if (allTokens.length > 0) {
-            const message = {
-                data: dataPayload,
-                tokens: [...new Set(allTokens)],
-            };
+        if (tokens.length === 0) return;
 
-            const response = await admin.messaging().sendEachForMulticast(message);
-            console.log(`FCM: Successfully sent ${response.successCount} messages.`);
-        }
-    } catch (err) {
-        console.error("FCM Multi-blast error:", err);
+        const message = {
+            data: data,
+            tokens: tokens,
+        };
+
+        const response = await admin.messaging().sendEachForMulticast(message);
+        console.log(`Successfully sent ${response.successCount} notifications`);
+    } catch (error) {
+        console.error('Error sending push notification:', error);
     }
-};
+}
+
+module.exports = { sendPushToGroup };

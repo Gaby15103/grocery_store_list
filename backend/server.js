@@ -15,8 +15,9 @@ const serviceAccount = require('backend/firebase-service-account.json');
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
+const messaging = admin.messaging();
 
-module.exports = admin;
+module.exports = {messaging};
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

@@ -39,7 +39,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "org.gaby15103.frontend"
+        applicationId = "org.gaby15103.grocery_master"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

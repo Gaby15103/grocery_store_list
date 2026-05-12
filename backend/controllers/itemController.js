@@ -1,5 +1,5 @@
 const { List, Item, sequelize, User, Group} = require('../models');
-import {sendPushToGroup} from '../utils/push-notifications'
+const { sendPushToGroup } = require('../utils/push-notifications');
 
 
 exports.createList = async (req, res) => {
@@ -58,16 +58,21 @@ exports.getListItems = async (req, res) => {
 exports.createItem = async (req, res) => {
     const { name, status, listId, groupId, note, imagePath } = req.body;
     const senderEmail = req.headers['x-user-email'];
+
     try {
         const item = await Item.create({ name, status, ListId: listId, note, imagePath });
+
         if (groupId) {
+            const user = await User.findOne({ where: { email: senderEmail } });
+            const senderName = user ? user.firstName : 'Someone';
+
             req.io.to(groupId).emit('item_added', { ...item.toJSON(), listId: item.ListId });
 
             await sendPushToGroup(groupId, senderEmail, {
                 type: 'item_added',
                 itemName: name,
                 listId: listId.toString(),
-                senderName: 'Someone'
+                senderName: senderName
             });
         }
         res.status(201).json(item);
