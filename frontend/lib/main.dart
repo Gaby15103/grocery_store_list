@@ -50,6 +50,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   // 1. Initialize Hive for the background process
+  print("i was tyhere");
   await Hive.initFlutter();
   final metaBox = await Hive.openBox<String>('metadata');
   final String lang = metaBox.get('language') ?? 'fr';

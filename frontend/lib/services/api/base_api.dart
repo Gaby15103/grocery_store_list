@@ -47,6 +47,9 @@ abstract class BaseApi {
         case 'PUT':
           response = await client.put(uri, headers: await headers, body: jsonEncode(body));
           break;
+        case 'PATCH':
+          response = await client.patch(uri, headers: await headers, body: jsonEncode(body));
+          break;
         case 'DELETE':
         // Some APIs expect a body in DELETE, others don't
           response = await client.delete(uri, headers: await headers, body: body != null ? jsonEncode(body) : null);

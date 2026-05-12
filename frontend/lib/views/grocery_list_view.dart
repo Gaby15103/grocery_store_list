@@ -25,6 +25,14 @@ class _GroceryListViewState extends State<GroceryListView> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
+  ItemController? _itemController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _itemController = Provider.of<ItemController>(context, listen: false);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -49,9 +57,7 @@ class _GroceryListViewState extends State<GroceryListView> {
   void dispose() {
     _controller.dispose();
     _noteController.dispose();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ItemController>().setOpenedList(null);
-    });
+    _itemController?.setOpenedList(null);
     super.dispose();
   }
 
