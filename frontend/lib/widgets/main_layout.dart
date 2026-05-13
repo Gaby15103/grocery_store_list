@@ -113,7 +113,6 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
-          authCtrl.refreshSocialData();
           final invites = authCtrl.pendingInvites;
 
           return AlertDialog(
@@ -139,7 +138,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                   final invite = invites[index];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(invite.GroupName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(invite.groupName, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text("From: ${invite.OwnerEmail}"),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -151,7 +150,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                               await authCtrl.respondToInvitation(invite.groupId, 'accepted');
                               await groupCtrl.loadGroups();
                               setDialogState(() {});
-                              UIHelpers.showNotification("Joined ${invite.GroupName}!", isError: false);
+                              UIHelpers.showNotification("Joined ${invite.groupName}!", isError: false);
                             } catch (e) {
                               UIHelpers.showNotification("Error: $e");
                             }
@@ -485,6 +484,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                   : null,
               onTap: () {
                 Navigator.pop(context);
+                authCtrl.refreshSocialData();
                 _showInvitationsDialog(context);
               },
             ),
