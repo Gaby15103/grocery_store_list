@@ -13,6 +13,8 @@ async function sendPushToGroup(groupId, senderEmail, data) {
             return;
         }
 
+        console.log('sender email:'+senderEmail+'\n data: '+data)
+
         const tokens = group.Users
             .filter(u => u.email !== senderEmail && u.deviceTokens && Object.keys(u.deviceTokens).length > 0)
             .flatMap(u => Object.values(u.deviceTokens)); // Get all tokens for that user

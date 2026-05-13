@@ -14,7 +14,7 @@ exports.register = async (req, res) => {
             email,
             firstName,
             lastName,
-            authorizedDevices: [deviceId] // First device is automatically authorized
+            authorizedDevices: [deviceId]
         });
 
         res.status(201).json(newUser);
@@ -29,7 +29,7 @@ exports.updateFcmToken = async (req, res) => {
     const deviceId = req.headers['x-device-id'];
 
     try {
-        const user = await User.findOne({ where: { email } });
+       const user = await User.findOne({ where: { email } });
 
         // 1. Ensure the device is actually authorized
         if (!user.authorizedDevices.includes(deviceId)) {
@@ -37,10 +37,12 @@ exports.updateFcmToken = async (req, res) => {
         }
 
         // 2. Update the token map
-        let tokens = user.deviceTokens || {};
-        tokens[deviceId] = token;
+         const updatedTokens = {
+            ...(user.deviceTokens || {}),
+            [deviceId]: token
+        };
 
-        await user.update({ deviceTokens: tokens });
+        await user.update({ deviceTokens: updatedTokens });
         res.status(200).json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
