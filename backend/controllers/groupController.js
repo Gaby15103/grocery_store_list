@@ -48,13 +48,13 @@ exports.makePublic = async (req, res) => {
 };
 
 exports.createGroup = async (req, res) => {
-    const { id, name } = req.body;
+    const { name } = req.body;
     const email = req.headers['x-user-email'];
     if (!email) return res.status(400).send("Email header missing");
     try {
         const user = await User.findOne({ where: { email } });
         if (!user) return res.status(404).json({ error: "User not found" });
-        const group = await Group.create({ id, name, ownerId: user.id });
+        const group = await Group.create({ name, ownerId: user.id });
         await UserGroup.create({ UserId: user.id, GroupId: group.id, role: 'owner', status: 'accepted' });
         res.status(201).json(group);
     } catch (error) { res.status(500).json({ error: error.message }); }

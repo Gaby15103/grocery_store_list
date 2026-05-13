@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
 });
 
 const Group = sequelize.define('Group', {
-    id: { type: DataTypes.STRING, primaryKey: true },
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     name: { type: DataTypes.STRING, allowNull: false },
     ownerId: DataTypes.UUID
 });

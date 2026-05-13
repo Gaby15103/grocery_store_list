@@ -76,8 +76,8 @@ class _ListSelectionViewState extends State<ListSelectionView> {
               try {
                 await groupCtrl.deleteGroup(widget.groupId);
                 if (context.mounted) {
-                  Navigator.pop(ctx); // Close dialog
-                  Navigator.pop(context); // Go back to Home
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
                 }
               } catch (e) {
                 if (context.mounted) Navigator.pop(ctx);
