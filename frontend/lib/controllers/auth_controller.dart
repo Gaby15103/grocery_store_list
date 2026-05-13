@@ -125,13 +125,33 @@ class AuthController extends ChangeNotifier {
 
   Future<void> sendInvitation(String groupId, String email) async {
     await repository.inviteUser(groupId, email);
-    await refreshSocialData(); // Refresh history
-  }
-
-  Future<void> acceptGroupInvitation(String groupId) async {
-    await repository.acceptInvite(groupId);
     await refreshSocialData();
   }
+
+  Future<void> fetchInvitations() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await refreshSocialData();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> respondToInvitation(String groupId, String status) async {
+    try {
+      await repository.acceptInvite(groupId, status);
+
+      _pendingInvites.removeWhere((invite) => invite.groupId == groupId);
+
+      await refreshSocialData();
+    } catch (e) {
+      debugPrint("Failed to respond to invitation: $e");
+      rethrow;
+    }
+  }
+
 
   Future<void> logout() async {
     await repository.clearAllLocalData();

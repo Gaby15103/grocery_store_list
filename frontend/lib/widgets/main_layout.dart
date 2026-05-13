@@ -105,6 +105,86 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
     );
   }
 
+  void _showInvitationsDialog(BuildContext context) {
+    final authCtrl = context.read<AuthController>();
+    final groupCtrl = context.read<GroupController>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final invites = authCtrl.pendingInvites;
+
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.mail, color: Colors.orange),
+                SizedBox(width: 10),
+                Text('Group Invitations'),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: invites.isEmpty
+                  ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text("No pending invitations found.", textAlign: TextAlign.center),
+              )
+                  : ListView.separated(
+                shrinkWrap: true,
+                itemCount: invites.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
+                  final invite = invites[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(invite.GroupName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("From: ${invite.OwnerEmail}"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check_circle, color: Colors.green),
+                          onPressed: () async {
+                            try {
+                              await authCtrl.respondToInvitation(invite.groupId, 'accepted');
+                              await groupCtrl.loadGroups();
+                              setDialogState(() {});
+                              UIHelpers.showNotification("Joined ${invite.GroupName}!", isError: false);
+                            } catch (e) {
+                              UIHelpers.showNotification("Error: $e");
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.redAccent),
+                          onPressed: () async {
+                            try {
+                              await authCtrl.respondToInvitation(invite.id, 'declined');
+                              setDialogState(() {});
+                            } catch (e) {
+                              UIHelpers.showNotification("Error: $e");
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showSendInvitationsDialog(BuildContext context, String activeGroupId) {
     final List<String> selectedEmails = [];
     final TextEditingController manualEmailController = TextEditingController();
@@ -404,7 +484,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                   : null,
               onTap: () {
                 Navigator.pop(context);
-                // logic to show dialog
+                _showInvitationsDialog(context);
               },
             ),
             ListTile(

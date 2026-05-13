@@ -83,7 +83,7 @@ class AuthRepository {
 
   Future<List<dynamic>> getInvites() => _api.fetchPendingInvites();
 
-  Future<void> acceptInvite(String groupId) => _api.respondToInvite(groupId, 'accepted');
+  Future<void> acceptInvite(String groupId, String status) => _api.respondToInvite(groupId, status);
 
   Future<void> inviteUser(String groupId, String email) => _api.sendInvite(groupId, email);
 
