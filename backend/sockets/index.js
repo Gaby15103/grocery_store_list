@@ -1,6 +1,5 @@
 const { Server } = require('socket.io');
-// Assuming you have a pool or database service to query your groups
-const pool = require('../config/db.js');
+const { User, Group, UserGroup } = require('./../models'); // Import your models
 
 const initSockets = (server) => {
     const io = new Server(server, {
@@ -9,30 +8,38 @@ const initSockets = (server) => {
 
     io.on('connection', async (socket) => {
         const userEmail = socket.handshake.headers['x-user-email'];
-        console.log(`🔌 New Connection: ${socket.id} (${userEmail})`);
 
-        if (userEmail) {
-            try {
-                // 1. Query all groups this user belongs to
-                // Adjust the SQL to match your schema (PostgreSQL example)
-                const result = await pool.query(
-                    'SELECT group_id FROM group_members WHERE user_email = $1',
-                    [userEmail]
-                );
+        if (!userEmail) {
+            console.log(`⚠️ Connection rejected: No email provided (Socket: ${socket.id})`);
+            return socket.disconnect();
+        }
 
-                // 2. Automatically join every group room
-                result.rows.forEach(row => {
-                    const roomName = row.group_id.toString();
-                    socket.join(roomName);
-                    console.log(`✅ Auto-joined: ${userEmail} -> Room ${roomName}`);
+        console.log(`🔌 New Connection: ${userEmail}`);
+
+        try {
+            // 1. Find the user and their associated groups
+            const user = await User.findOne({
+                where: { email: userEmail },
+                include: [{
+                    model: Group,
+                    attributes: ['id'],
+                    through: { where: { status: 'accepted' } } // Only join groups they actually joined
+                }]
+            });
+
+            if (user && user.Groups) {
+                // 2. Auto-join every group room
+                user.Groups.forEach(group => {
+                    socket.join(group.id);
+                    console.log(`✅ ${userEmail} auto-joined Room: ${group.id}`);
                 });
-            } catch (err) {
-                console.error("❌ Error auto-joining rooms:", err);
             }
+        } catch (err) {
+            console.error("❌ Error during auto-join logic:", err);
         }
 
         socket.on('disconnect', () => {
-            console.log(`🔌 Disconnected: ${socket.id}`);
+            console.log(`🔌 Disconnected: ${userEmail}`);
         });
     });
 
