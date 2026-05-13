@@ -48,12 +48,16 @@ class GroceryItem extends HiveObject {
 
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
     return GroceryItem(
-      id: json['id'],
-      name: json['name'],
-      listId: json['ListId'] ?? json['listId'],
-      groupId: json['groupId'] ?? '',
-      status: _statusFromString(json['status']),
-      createdAt: DateTime.parse(json['createdAt']),
+      id: json['id'] is String ? int.tryParse(json['id']) : json['id'],
+      name: json['name'] ?? 'Unknown',
+      // Check both PascalCase (Sequelize) and camelCase
+      listId: json['ListId']?.toString() ?? json['listId']?.toString() ?? '',
+      groupId: json['GroupId']?.toString() ?? json['groupId']?.toString() ?? '',
+      status: _statusFromString(json['status']?.toString() ?? 'pending'),
+      // Fallback to now if the date is missing
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
       note: json['note'],
       imagePath: json['imagePath'],
       addedBy: json['addedBy'],

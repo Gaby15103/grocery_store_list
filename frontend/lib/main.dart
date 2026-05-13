@@ -44,7 +44,8 @@ import 'views/settings_view.dart';
 import 'views/list_selection_view.dart';
 import 'views/grocery_list_view.dart';
 
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
@@ -78,9 +79,10 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 
     try {
       title = L10n.getStatic(type, lang);
-      body = L10n.getStatic('${type}_body', lang)
-          .replaceAll('{user}', senderName)
-          .replaceAll('{item}', itemName);
+      body = L10n.getStatic(
+        '${type}_body',
+        lang,
+      ).replaceAll('{user}', senderName).replaceAll('{item}', itemName);
     } catch (e) {
       debugPrint("⚠️ L10n failed in background, using fallbacks");
       title = (lang == 'fr') ? "Mise à jour" : "Update";
@@ -106,13 +108,13 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
   if (WidgetsBinding.instance.platformDispatcher.views.isEmpty) {
-    debugPrint("IDLE: Background Isolate detected. Skipping full app initialization.");
+    debugPrint(
+      "IDLE: Background Isolate detected. Skipping full app initialization.",
+    );
     return;
   }
 
@@ -124,8 +126,6 @@ void main() async {
     debugPrint("Dotenv load failed: $e");
   }
 
-
-
   await Hive.initFlutter();
   Hive.registerAdapter(ItemStatusAdapter());
   Hive.registerAdapter(GroceryItemAdapter());
@@ -134,7 +134,9 @@ void main() async {
   Hive.registerAdapter(SyncTaskAdapter());
 
   final box = await Hive.openBox<String>('metadata');
-  final savedLang = box.get('language') ?? WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+  final savedLang =
+      box.get('language') ??
+      WidgetsBinding.instance.platformDispatcher.locale.languageCode;
   final bool isFrench = savedLang == 'fr';
 
   // --- KEEPING YOUR MOBILE LOGIC ---
@@ -163,10 +165,21 @@ void main() async {
     MultiProvider(
       providers: [
         Provider.value(value: socketService),
-        ChangeNotifierProvider(create: (_) => AuthController(repository: authRepo)),
-        ChangeNotifierProvider(create: (_) => GroupController(repository: groupRepo, socketService: socketService)),
-        ChangeNotifierProvider(create: (_) => ListController(repository: listRepo)),
-        ChangeNotifierProvider(create: (_) => ItemController(repository: itemRepo)),
+        ChangeNotifierProvider(
+          create: (_) => AuthController(repository: authRepo),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => GroupController(
+            repository: groupRepo,
+            socketService: socketService,
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ListController(repository: listRepo),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ItemController(repository: itemRepo),
+        ),
       ],
       child: const GroceryApp(),
     ),
@@ -183,7 +196,6 @@ class GroceryApp extends StatefulWidget {
 class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   bool _isSocketInitialized = false;
   late final SyncManager _syncManager;
-
 
   @override
   void initState() {
@@ -223,20 +235,19 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   }
 
   void _setupNotificationTapHandler() {
-    NotificationService.selectNotificationStream.stream.listen((String? listId) {
+    NotificationService.selectNotificationStream.stream.listen((
+      String? listId,
+    ) {
       if (listId != null) {
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => GroceryListView(
-              sessionId: listId,
-            ),
+            builder: (context) => GroceryListView(sessionId: listId),
           ),
-              (route) => route.isFirst,
+          (route) => route.isFirst,
         );
       }
     });
   }
-
 
   void _setupGlobalListeners() {
     final socket = context.read<SocketService>();
@@ -245,16 +256,9 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
 
     // Handle incoming socket events globally
     socket.eventStream.listen((event) {
-      final String? incomingListId = event.data['ListId'] ?? event.data['listId'];
-      final String? incomingGroupId = event.data['GroupId'] ?? event.data['groupId'];
+      itemCtrl.syncFromSocket(event.type, event.data);
 
-      if (incomingListId != null) {
-        itemCtrl.syncFromSocket(incomingListId, incomingGroupId ?? 'default');
-
-        if (incomingListId != itemCtrl.currentListId) {
-          _handleBackgroundNotification(event);
-        }
-      }
+      _handleBackgroundNotification(event);
 
       if (event.type == 'force_refresh' || event.type == 'group_deleted') {
         groupCtrl.loadGroups();
@@ -263,7 +267,9 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   }
 
   void _setupConnectivityListener(SyncManager syncManager, BaseApi api) {
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       if (results.isNotEmpty && !results.contains(ConnectivityResult.none)) {
         debugPrint("🌐 Internet restored, processing sync queue...");
         syncManager.processQueue(api);
@@ -280,14 +286,20 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
 
     final itemCtrl = context.read<ItemController>();
     if (incomingListId != null && incomingListId == itemCtrl.currentListId) {
-      debugPrint("🔇 Silencing notification: User is looking at list $incomingListId");
+      debugPrint(
+        "🔇 Silencing notification: User is looking at list $incomingListId",
+      );
       return;
     }
 
-    final bool notifyItems = box.get('notify_item_changes', defaultValue: 'true') == 'true';
-    final bool notifyInvites = box.get('notify_invitations', defaultValue: 'true') == 'true';
-    final bool notifyListCreated = box.get('notify_list_created', defaultValue: 'true') == 'true';
-    final bool notifyCarryOver = box.get('notify_carry_over', defaultValue: 'true') == 'true';
+    final bool notifyItems =
+        box.get('notify_item_changes', defaultValue: 'true') == 'true';
+    final bool notifyInvites =
+        box.get('notify_invitations', defaultValue: 'true') == 'true';
+    final bool notifyListCreated =
+        box.get('notify_list_created', defaultValue: 'true') == 'true';
+    final bool notifyCarryOver =
+        box.get('notify_carry_over', defaultValue: 'true') == 'true';
 
     switch (event.type) {
       case 'item_added':
@@ -333,7 +345,8 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
         NotificationService.showPhoneNotification(
           id: 4,
           title: lang == 'fr' ? 'Nouvelle liste' : 'New List',
-          body: '${event.data['name']} ${lang == 'fr' ? 'est prête' : 'is ready'}.',
+          body:
+              '${event.data['name']} ${lang == 'fr' ? 'est prête' : 'is ready'}.',
           payload: incomingListId,
         );
         break;
@@ -367,10 +380,7 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
           scaffoldMessengerKey: scaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
           locale: Locale(language),
-          supportedLocales: const [
-            Locale('en', ''),
-            Locale('fr', ''),
-          ],
+          supportedLocales: const [Locale('en', ''), Locale('fr', '')],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,

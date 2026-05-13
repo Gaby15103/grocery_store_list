@@ -103,12 +103,8 @@ class ItemRepository {
   /// DELETE: Remove from server
   Future<void> deleteItem(GroceryItem item, String groupId) async {
     final bool shared = await _isShared(groupId);
-
-    print("is shared: $shared");
-    print("id is not null: ${item.id != null}");
-
     if (shared && item.id != null) {
-      await _api.deleteItem(item.id!, item.name, item.listId, item.groupId);
+      await _api.deleteItem(item.id!, item.name, item.listId, groupId);
     }
   }
 }

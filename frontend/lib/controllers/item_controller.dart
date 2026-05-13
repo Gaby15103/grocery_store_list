@@ -25,16 +25,41 @@ class ItemController extends ChangeNotifier {
     print("📍 UI State: User is now viewing list: $listId");
   }
 
-  Future<void> syncFromSocket(String listId, String groupId) async {
-    if (_currentListId == listId) {
-      debugPrint("📡 Socket Sync: Refreshing list $listId");
-      try {
-        _currentItems = await repository.getItems(listId, groupId);
-        notifyListeners();
-      } catch (e) {
-        debugPrint("❌ Socket sync failed: $e");
-      }
+  Future<void> syncFromSocket(String eventType, Map<String, dynamic> data) async {
+    print(data);
+    final String? incomingListId = data['listId']?.toString();
+
+    // Only process if the user is actually looking at this list
+    if (_currentListId != incomingListId) return;
+
+    // Convert the JSON data from the socket into a GroceryItem object
+    final GroceryItem socketItem = GroceryItem.fromJson(data);
+
+    switch (eventType) {
+      case 'item_added':
+        final exists = _currentItems.any((i) => i.id == socketItem.id || (i.id == -1 && i.name == socketItem.name));
+        if (!exists) {
+          _currentItems.insert(0, socketItem);
+        } else if (socketItem.id != -1) {
+          int tempIndex = _currentItems.indexWhere((i) => i.id == -1 && i.name == socketItem.name);
+          if (tempIndex != -1) _currentItems[tempIndex] = socketItem;
+        }
+        break;
+
+      case 'item_updated':
+        int index = _currentItems.indexWhere((i) => i.id == socketItem.id);
+        if (index != -1) {
+          _currentItems[index] = socketItem;
+        }
+        break;
+
+      case 'item_removed':
+      case 'item_deleted':
+        _currentItems.removeWhere((i) => i.id == socketItem.id);
+        break;
     }
+
+    notifyListeners();
   }
 
   // --- CORE OPTIMISTIC METHODS ---
