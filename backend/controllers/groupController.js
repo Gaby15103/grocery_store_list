@@ -3,11 +3,24 @@ const { User, Group, UserGroup } = require('../models');
 exports.getGroups = async (req, res) => {
     const email = req.headers['x-user-email'];
     if (!email) return res.status(400).send("Email header missing");
+
     try {
-        const user = await User.findOne({ where: { email }, include: [{ model: Group }] });
+        const user = await User.findOne({
+            where: { email },
+            include: [{
+                model: Group,
+                through: {
+                    where: { status: 'accepted' }
+                }
+            }]
+        });
+
         if (!user) return res.status(404).send("User not found");
+
         res.json(user.Groups);
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
 };
 
 exports.getGroup = async (req, res) => {

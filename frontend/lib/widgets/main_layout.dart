@@ -138,8 +138,8 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                   final invite = invites[index];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(invite.groupName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text("From: ${invite.OwnerEmail}"),
+                    title: Text(invite['GroupName'] ?? 'Unnamed Group', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("From: ${invite['OwnerEmail']}"),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -147,10 +147,10 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                           icon: const Icon(Icons.check_circle, color: Colors.green),
                           onPressed: () async {
                             try {
-                              await authCtrl.respondToInvitation(invite.groupId, 'accepted');
+                              await authCtrl.respondToInvitation(invite['groupId'], 'accepted');
                               await groupCtrl.loadGroups();
                               setDialogState(() {});
-                              UIHelpers.showNotification("Joined ${invite.groupName}!", isError: false);
+                              UIHelpers.showNotification("Joined ${invite['GroupName']}!", isError: false);
                             } catch (e) {
                               UIHelpers.showNotification("Error: $e");
                             }
