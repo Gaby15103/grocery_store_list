@@ -85,7 +85,7 @@ exports.deleteItem = async (req, res) => {
     try {
         await Item.destroy({ where: { id: itemId } });
         if (groupId) {
-            req.io.to(groupId).emit('item_deleted', { name, listId });
+            req.io.to(groupId).emit('item_deleted', { id: itemId, name, listId });
             sendPushToGroup(groupId, senderEmail, {
                 type: 'item_deleted',
                 itemName: name,
