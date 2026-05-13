@@ -7,7 +7,7 @@ const initSockets = (server) => {
     });
 
     io.on('connection', async (socket) => {
-        const userEmail = socket.handshake.headers['x-user-email'];
+        const userEmail = socket.handshake.auth.email || socket.handshake.headers['x-user-email'];
 
         if (!userEmail) {
             console.log(`⚠️ Connection rejected: No email provided (Socket: ${socket.id})`);
@@ -17,18 +17,16 @@ const initSockets = (server) => {
         console.log(`🔌 New Connection: ${userEmail}`);
 
         try {
-            // 1. Find the user and their associated groups
             const user = await User.findOne({
                 where: { email: userEmail },
                 include: [{
                     model: Group,
                     attributes: ['id'],
-                    through: { where: { status: 'accepted' } } // Only join groups they actually joined
+                    through: { where: { status: 'accepted' } }
                 }]
             });
 
             if (user && user.Groups) {
-                // 2. Auto-join every group room
                 user.Groups.forEach(group => {
                     socket.join(group.id);
                     console.log(`✅ ${userEmail} auto-joined Room: ${group.id}`);

@@ -38,7 +38,7 @@ class GroceryItem extends HiveObject {
   Map<String, dynamic> toJson() => {
     'name': name,
     'status': status.name,
-    'createdAt': createdAt.toIso8601String(),
+    'createdAt': createdAt.toUtc().toIso8601String(),
     'listId': listId,
     'groupId': groupId,
     'note': note,

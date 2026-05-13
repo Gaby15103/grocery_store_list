@@ -26,13 +26,10 @@ class ItemController extends ChangeNotifier {
   }
 
   Future<void> syncFromSocket(String eventType, Map<String, dynamic> data) async {
-    print(data);
     final String? incomingListId = data['listId']?.toString();
 
-    // Only process if the user is actually looking at this list
     if (_currentListId != incomingListId) return;
 
-    // Convert the JSON data from the socket into a GroceryItem object
     final GroceryItem socketItem = GroceryItem.fromJson(data);
 
     switch (eventType) {
@@ -188,7 +185,6 @@ class ItemController extends ChangeNotifier {
     bool shouldClearImage = false,
     String? groupId,
   }) async {
-    // Details updates usually involve images/heavy text, so we keep the loader
     _isLoading = true;
     notifyListeners();
 

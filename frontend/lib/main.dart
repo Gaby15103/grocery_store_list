@@ -254,7 +254,6 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
     final groupCtrl = context.read<GroupController>();
     final itemCtrl = context.read<ItemController>();
 
-    // Handle incoming socket events globally
     socket.eventStream.listen((event) {
       itemCtrl.syncFromSocket(event.type, event.data);
 

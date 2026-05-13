@@ -27,6 +27,7 @@ class SocketService {
     socket = IO.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
+      'auth': {'email': userEmail},
       'extraHeaders': {'x-user-email': userEmail}
     });
 

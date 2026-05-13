@@ -9,7 +9,7 @@ class NotificationService {
   static final StreamController<String?> selectNotificationStream = StreamController<String?>.broadcast();
 
   static Future<void> init({String channelName = 'Grocery Updates', String channelDesc = 'Grocery list changes'}) async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('mipmap/launcher_icon');
 
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: true,

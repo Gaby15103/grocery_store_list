@@ -106,7 +106,7 @@ exports.updateItem = async (req, res) => {
         );
 
         if (updatedRows > 0 && groupId) {
-            req.io.to(groupId).emit('item_updated', { id, name, listId, status, note, imagePath });
+            req.io.to(groupId.toString()).emit('item_updated', { id, name, listId, status, note, imagePath });
 
             if (status === 'bought') {
                 await sendPushToGroup(groupId, senderEmail, {
