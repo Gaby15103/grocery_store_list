@@ -113,6 +113,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          authCtrl.refreshSocialData();
           final invites = authCtrl.pendingInvites;
 
           return AlertDialog(
