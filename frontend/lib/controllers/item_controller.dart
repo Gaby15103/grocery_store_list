@@ -25,6 +25,18 @@ class ItemController extends ChangeNotifier {
     print("📍 UI State: User is now viewing list: $listId");
   }
 
+  Future<void> syncFromSocket(String listId, String groupId) async {
+    if (_currentListId == listId) {
+      debugPrint("📡 Socket Sync: Refreshing list $listId");
+      try {
+        _currentItems = await repository.getItems(listId, groupId);
+        notifyListeners();
+      } catch (e) {
+        debugPrint("❌ Socket sync failed: $e");
+      }
+    }
+  }
+
   // --- CORE OPTIMISTIC METHODS ---
 
   /// Toggle status happens INSTANTLY in the UI

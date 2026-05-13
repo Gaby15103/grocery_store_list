@@ -245,12 +245,17 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
 
     // Handle incoming socket events globally
     socket.eventStream.listen((event) {
-      // 1. Logic for Mobile Notifications
-      if (!kIsWeb) {
-        _handleBackgroundNotification(event);
+      final String? incomingListId = event.data['ListId'] ?? event.data['listId'];
+      final String? incomingGroupId = event.data['GroupId'] ?? event.data['groupId'];
+
+      if (incomingListId != null) {
+        itemCtrl.syncFromSocket(incomingListId, incomingGroupId ?? 'default');
+
+        if (incomingListId != itemCtrl.currentListId) {
+          _handleBackgroundNotification(event);
+        }
       }
 
-      // 2. Logic for UI Refresh (The real MVC way)
       if (event.type == 'force_refresh' || event.type == 'group_deleted') {
         groupCtrl.loadGroups();
       }
