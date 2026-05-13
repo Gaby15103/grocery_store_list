@@ -3,9 +3,9 @@ const { sendPushToGroup } = require('../utils/push-notifications');
 
 
 exports.createList = async (req, res) => {
-    const { id, name, GroupId, createdAt } = req.body;
+    const { name, GroupId } = req.body;
     try {
-        const newList = await List.create({ id, name, GroupId, createdAt: createdAt || new Date() });
+        const newList = await List.create({ name, GroupId, createdAt: new Date() });
         res.status(201).json(newList);
     } catch (error) { res.status(500).json({ error: error.message }); }
 };

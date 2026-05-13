@@ -41,7 +41,7 @@ class ItemApiClient extends BaseApi {
   }
 
   /// Deletes an item from the server
-  Future<void> deleteItem(int itemId, String name, String listId, String groupId) async {
+  Future<void> deleteItem(String itemId, String name, String listId, String groupId) async {
     await request<void>(
       method: 'DELETE',
       path: '/items/$itemId',

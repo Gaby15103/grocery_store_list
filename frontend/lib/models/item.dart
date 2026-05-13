@@ -20,7 +20,7 @@ class GroceryItem extends HiveObject {
   @HiveField(6) String? modifiedBy;
   @HiveField(7) String? note;
   @HiveField(8) String? imagePath;
-  @HiveField(9) int? id;
+  @HiveField(9) String? id;
 
   GroceryItem({
     required this.name,
@@ -48,7 +48,7 @@ class GroceryItem extends HiveObject {
 
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
     return GroceryItem(
-      id: json['id'] is String ? int.tryParse(json['id']) : json['id'],
+      id: json['id'],
       name: json['name'] ?? 'Unknown',
       // Check both PascalCase (Sequelize) and camelCase
       listId: json['ListId']?.toString() ?? json['listId']?.toString() ?? '',

@@ -30,12 +30,13 @@ const UserGroup = sequelize.define('UserGroup', {
 });
 
 const List = sequelize.define('List', {
-    id: { type: DataTypes.STRING, primaryKey: true },
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     name: { type: DataTypes.STRING, allowNull: false },
     isArchived: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 const Item = sequelize.define('Item', {
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     name: { type: DataTypes.STRING, allowNull: false },
     status: {
         type: DataTypes.ENUM('pending', 'bought', 'discarded'),

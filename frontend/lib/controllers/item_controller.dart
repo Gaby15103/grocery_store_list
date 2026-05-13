@@ -106,7 +106,6 @@ class ItemController extends ChangeNotifier {
     File? imageFile,
   }) async {
     final tempItem = GroceryItem(
-      id: -1,
       name: name,
       listId: listId,
       groupId: groupId,
