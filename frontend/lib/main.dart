@@ -49,33 +49,58 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // 1. Initialize Hive for the background process
-  print("i was tyhere");
-  await Hive.initFlutter();
-  final metaBox = await Hive.openBox<String>('metadata');
-  final String lang = metaBox.get('language') ?? 'fr';
+  // 1. MUST be the very first call
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
 
-  // 2. Initialize your existing notification service
-  await NotificationService.init();
+  // 2. Use debugPrint - it's more reliable for Logcat on your Pixel 7a
+  debugPrint("🔥 FCM Isolate Started: ${message.messageId}");
 
-  // 3. Extract data sent by your server
-  final String type = message.data['type'] ?? 'item_added';
-  final String itemName = message.data['itemName'] ?? '';
-  final String senderName = message.data['senderName'] ?? '';
+  try {
+    if (!Hive.isBoxOpen('metadata')) {
+      await Hive.initFlutter();
+      await Hive.openBox<String>('metadata');
+    }
 
-  // 4. Localize using the static method we added to L10n
-  String title = L10n.getStatic(type, lang); // 'item_added'
-  String body = L10n.getStatic('${type}_body', lang)
-      .replaceAll('{user}', senderName)
-      .replaceAll('{item}', itemName);
+    final metaBox = Hive.box<String>('metadata');
+    final String lang = metaBox.get('language') ?? 'fr';
 
-  // 5. Show the notification
-  await NotificationService.showPhoneNotification(
-    id: message.hashCode,
-    title: title,
-    body: body,
-    payload: message.data['listId'],
-  );
+    await NotificationService.init();
+
+    final String type = message.data['type'] ?? 'item_added';
+    final String itemName = message.data['itemName'] ?? '';
+    final String senderName = message.data['senderName'] ?? 'Quelqu\'un';
+
+    // 5. SAFETY FALLBACK: If L10n fails, use hardcoded defaults
+    String title;
+    String body;
+
+    try {
+      title = L10n.getStatic(type, lang);
+      body = L10n.getStatic('${type}_body', lang)
+          .replaceAll('{user}', senderName)
+          .replaceAll('{item}', itemName);
+    } catch (e) {
+      debugPrint("⚠️ L10n failed in background, using fallbacks");
+      title = (lang == 'fr') ? "Mise à jour" : "Update";
+      body = (lang == 'fr')
+          ? "$senderName a acheté $itemName"
+          : "$senderName purchased $itemName";
+    }
+
+    await NotificationService.showPhoneNotification(
+      id: message.hashCode,
+      title: title,
+      body: body,
+      payload: message.data['listId'],
+    );
+
+    debugPrint("✅ Notification dispatched from background");
+  } catch (e) {
+    // Catch-all to prevent the isolate from crashing silently
+    debugPrint("❌ BACKGROUND CRASH: $e");
+  }
 }
 
 void main() async {
@@ -85,6 +110,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+
+  if (WidgetsBinding.instance.platformDispatcher.views.isEmpty) {
+    debugPrint("IDLE: Background Isolate detected. Skipping full app initialization.");
+    return;
+  }
 
   await AppConfig.init();
 
