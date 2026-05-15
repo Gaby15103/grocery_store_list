@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../models/item.dart';
 import '../repositories/item_repository.dart';
+
+enum ItemSortType { alphabetical, created, status, hasNote, hasImage }
 
 class ItemController extends ChangeNotifier {
   final ItemRepository repository;
@@ -18,11 +22,53 @@ class ItemController extends ChangeNotifier {
   List<GroceryItem> _currentItems = [];
   List<GroceryItem> get currentItems => _currentItems;
 
+  ItemSortType _currentSort = ItemSortType.created;
+  bool _isInverse = false;
+
+  ItemSortType get currentSort => _currentSort;
+  bool get isInverse => _isInverse;
+
   ItemController({required this.repository});
+
 
   void setOpenedList(String? listId) {
     _currentListId = listId;
     print("📍 UI State: User is now viewing list: $listId");
+  }
+
+  void setSort(ItemSortType type, {bool? inverse}) {
+    _currentSort = type;
+    if (inverse != null) _isInverse = inverse;
+
+    final metaBox = Hive.box<String>('metadata');
+    metaBox.put('sort_type', type.name);
+    metaBox.put('sort_inverse', _isInverse.toString());
+
+    applySort();
+  }
+
+  void applySort() {
+    _currentItems.sort((a, b) {
+      int cmp;
+      switch (_currentSort) {
+        case ItemSortType.alphabetical:
+          cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case ItemSortType.hasNote:
+          cmp = (b.note?.length ?? 0).compareTo(a.note?.length ?? 0);
+          break;
+        case ItemSortType.hasImage:
+          int aHas = a.imagePath != null ? 1 : 0;
+          int bHas = b.imagePath != null ? 1 : 0;
+          cmp = bHas.compareTo(aHas);
+          break;
+        case ItemSortType.created:
+        default:
+          cmp = a.createdAt.compareTo(b.createdAt);
+      }
+      return _isInverse ? -cmp : cmp;
+    });
+    notifyListeners();
   }
 
   Future<void> syncFromSocket(String eventType, Map<String, dynamic> data) async {
@@ -56,6 +102,7 @@ class ItemController extends ChangeNotifier {
         break;
     }
 
+    applySort();
     notifyListeners();
   }
 
@@ -65,7 +112,6 @@ class ItemController extends ChangeNotifier {
   Future<void> toggleStatus(GroceryItem item, String groupId, {String? forceStatus}) async {
     final oldStatus = item.status;
 
-    // Determine target
     ItemStatus targetStatus;
     if (forceStatus != null) {
       targetStatus = ItemStatus.values.firstWhere(
@@ -76,7 +122,6 @@ class ItemController extends ChangeNotifier {
       targetStatus = (oldStatus == ItemStatus.bought) ? ItemStatus.pending : ItemStatus.bought;
     }
 
-    // 1. Optimistic Update
     item.status = targetStatus;
     notifyListeners();
 
@@ -84,12 +129,9 @@ class ItemController extends ChangeNotifier {
       await repository.updateItem(item, groupId);
       _errorMessage = null;
     } catch (e) {
-      // 2. Handle specific network failures (Queueing)
       if (e.toString().contains("queued") || e.toString().contains("Offline")) {
         debugPrint("Sync pending: Status change added to queue.");
-        // We DON'T rollback here because the SyncManager will handle it eventually
       } else {
-        // 3. Rollback for permanent server errors
         item.status = oldStatus;
         _errorMessage = "Sync failed: Server rejected the change.";
         notifyListeners();

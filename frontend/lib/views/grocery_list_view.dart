@@ -48,7 +48,9 @@ class _GroceryListViewState extends State<GroceryListView> {
 
         itemCtrl.setOpenedList(widget.sessionId!);
 
-        itemCtrl.loadItems(widget.sessionId!, effectiveGroupId);
+        itemCtrl.loadItems(widget.sessionId!, effectiveGroupId).then((_) {
+          itemCtrl.applySort();
+        });
       });
     }
   }
@@ -104,7 +106,7 @@ class _GroceryListViewState extends State<GroceryListView> {
   }
 
   void _showAddDialog() {
-    _selectedImage = null; // Reset image for new item
+    _selectedImage = null;
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -208,6 +210,10 @@ class _GroceryListViewState extends State<GroceryListView> {
                   shouldClearImage: clearImage,
                   groupId: context.read<GroupController>().activeGroupId,
                 );
+                _controller.clear();
+                _noteController.clear();
+
+                setState(() => _selectedImage = null);
                 if (mounted) Navigator.pop(context);
               },
               child: Text(L10n.of(context, 'save')),
@@ -325,6 +331,10 @@ class _GroceryListViewState extends State<GroceryListView> {
       showBackButton: true,
       actions: [
         IconButton(
+          icon: const Icon(Icons.sort),
+          onPressed: () => _showSortBottomSheet(context),
+        ),
+        IconButton(
           icon: const Icon(Icons.archive_outlined),
           tooltip: "Finish & Carry Over",
           onPressed: _showArchiveDialog,
@@ -346,6 +356,46 @@ class _GroceryListViewState extends State<GroceryListView> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showSortBottomSheet(BuildContext context) {
+    final itemCtrl = context.read<ItemController>();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SwitchListTile(
+              title: Text(L10n.of(context, 'inverse_order')),
+              value: itemCtrl.isInverse,
+              onChanged: (val) {
+                itemCtrl.setSort(itemCtrl.currentSort, inverse: val);
+                setSheetState(() {});
+              },
+            ),
+            const Divider(),
+            _sortTile(ctx, itemCtrl, ItemSortType.alphabetical, Icons.sort_by_alpha, L10n.of(context, 'alphabetical')),
+            _sortTile(ctx, itemCtrl, ItemSortType.created, Icons.calendar_today, L10n.of(context, 'date_created')),
+            _sortTile(ctx, itemCtrl, ItemSortType.hasNote, Icons.note, L10n.of(context, 'items_with_notes')),
+            _sortTile(ctx, itemCtrl, ItemSortType.hasImage, Icons.image, L10n.of(context, 'items_with_images')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sortTile(BuildContext context, ItemController ctrl, ItemSortType type, IconData icon, String label) {
+    return ListTile(
+      leading: Icon(icon, color: ctrl.currentSort == type ? Colors.blue : null),
+      title: Text(label),
+      trailing: ctrl.currentSort == type ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () {
+        ctrl.setSort(type);
+        Navigator.pop(context);
+      },
     );
   }
 

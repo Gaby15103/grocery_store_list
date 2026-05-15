@@ -160,7 +160,7 @@ class _MainLayoutState extends State<MainLayout> with WidgetsBindingObserver {
                           icon: const Icon(Icons.cancel, color: Colors.redAccent),
                           onPressed: () async {
                             try {
-                              await authCtrl.respondToInvitation(invite.id, 'declined');
+                              await authCtrl.respondToInvitation(invite['groupId'], 'declined');
                               setDialogState(() {});
                             } catch (e) {
                               UIHelpers.showNotification("Error: $e");

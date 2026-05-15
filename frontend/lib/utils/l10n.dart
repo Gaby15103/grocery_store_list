@@ -143,6 +143,13 @@ class L10n {
 
       'item_deleted': 'Article supprimé',
       'item_deleted_body': '{item} a été retiré de la liste.',
+
+      'inverse_order': 'Ordre inverse',
+      'alphabetical': 'Alphabétique',
+      'date_created': 'Date de création',
+      'items_with_notes': 'Articles avec notes',
+      'items_with_images': 'Articles avec images',
+      'finish_carry_over': 'Terminer et Reporter',
     },
     'en': {
       // Home Screen
@@ -285,6 +292,13 @@ class L10n {
 
       'item_deleted': 'Item Removed',
       'item_deleted_body': '{item} was removed from the list.',
+
+      'inverse_order': 'Inverse Order',
+      'alphabetical': 'Alphabetical',
+      'date_created': 'Date Created',
+      'items_with_notes': 'Items with Notes',
+      'items_with_images': 'Items with Images',
+      'finish_carry_over': 'Finish & Carry over',
     },
   };
 
