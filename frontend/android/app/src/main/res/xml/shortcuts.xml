@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.ADD_ITEM_TO_LIST">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="org.gaby15103.grocery_master"
+            android:targetClass="org.gaby15103.grocery_master.MainActivity">
+            <parameter
+                android:name="itemList.name"
+                android:key="itemName"/>
+        </intent>
+    </capability>
+</shortcuts>

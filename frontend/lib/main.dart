@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:grocery_list/services/api/base_api.dart';
 import 'package:grocery_list/services/sync_manager.dart';
 import 'package:grocery_list/utils/l10n.dart';
+import 'package:grocery_list/utils/list_intent_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart';
@@ -197,6 +198,8 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
   bool _isSocketInitialized = false;
   late final SyncManager _syncManager;
 
+  final ListIntentHandler _intentHandler = ListIntentHandler();
+
   @override
   void initState() {
     super.initState();
@@ -209,6 +212,8 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
       if (auth.repository.getEmail() != null) {
         auth.syncTokenWithServer();
       }
+
+      _setupVoiceIntent();
     });
 
     _setupGlobalListeners();
@@ -218,6 +223,45 @@ class _GroceryAppState extends State<GroceryApp> with WidgetsBindingObserver {
 
       _setupConnectivityListener(_syncManager, AuthApiClient());
     }
+  }
+
+  void _setupVoiceIntent() {
+    if (kIsWeb) return;
+
+    _intentHandler.initIncomingLinks((String itemName) async {
+      debugPrint("🎙️ Voice item received via handler: $itemName");
+
+      final itemCtrl = context.read<ItemController>();
+      final listCtrl = context.read<ListController>();
+      final groupCtrl = context.read<GroupController>();
+
+      String? targetListId = listCtrl.currentListId;
+      String? targetGroupId = groupCtrl.activeGroupId;
+
+      if (targetListId == null && listCtrl.lists.isNotEmpty) {
+        targetListId = listCtrl.lists.first.id;
+        targetGroupId = listCtrl.lists.first.groupId;
+      }
+
+      if (targetListId != null && targetGroupId != null) {
+        try {
+          await itemCtrl.addItem(
+            name: itemName,
+            listId: targetListId,
+            groupId: targetGroupId,
+            note: null
+          );
+
+          scaffoldMessengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text("🛒 Added '$itemName' via Google Assistant")),
+          );
+        } catch (e) {
+          debugPrint("❌ Failed to run addItem from voice handler: $e");
+        }
+      } else {
+        debugPrint("⚠️ No active list found to drop the voice item into.");
+      }
+    });
   }
 
   @override

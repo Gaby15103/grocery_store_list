@@ -25,3 +25,12 @@ plugins {
 }
 
 include(":app")
+
+gradle.lifecycle.beforeProject {
+    if (name == "uni_links") {
+        plugins.withType<com.android.build.gradle.api.AndroidBasePlugin> {
+            val androidExtension = extensions.findByName("android") as? com.android.build.gradle.BaseExtension
+            androidExtension?.namespace = "name.avioli.unilinks"
+        }
+    }
+}
