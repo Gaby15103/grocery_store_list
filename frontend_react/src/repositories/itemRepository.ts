@@ -1,6 +1,6 @@
-import { groupRepository } from './groupRepository';
+import {groupRepository} from './groupRepository';
 import {groupApiClient} from "@/services/api/groupApiClient";
-import { itemApiClient} from "@/services/api/itemApiClient";
+import {itemApiClient} from "@/services/api/itemApiClient";
 import {GroceryItem, ItemStatus} from "@/types/models";
 
 // Interface defining the cross-platform React Native file references
@@ -37,10 +37,7 @@ class ItemRepository {
      * GET: Absolute truth from server
      */
     async getItems(listId: string, groupId: string): Promise<GroceryItem[]> {
-        if (await this._isShared(groupId)) {
-            return await itemApiClient.fetchItems(listId);
-        }
-        return [];
+        return await itemApiClient.fetchItems(listId);
     }
 
     /**

@@ -9,6 +9,7 @@ import {socketService} from "@/services/socketService";
 import {ListProvider} from "@/context/listContext";
 import {ThemeProvider} from "@/context/themeContext";
 import {PortalHost} from '@rn-primitives/portal';
+import {ItemProvider} from "@/context/itemContext";
 
 function AppLifecycleObserver() {
     const {loadGroups} = useGroups();
@@ -86,8 +87,10 @@ export default function RootLayout() {
                 <SocketProvider>
                     <ListProvider>
                         <ThemeProvider>
-                            <AppLifecycleObserver/>
-                            <PortalHost/>
+                            <ItemProvider>
+                                <AppLifecycleObserver/>
+                                <PortalHost/>
+                            </ItemProvider>
                         </ThemeProvider>
                     </ListProvider>
                 </SocketProvider>

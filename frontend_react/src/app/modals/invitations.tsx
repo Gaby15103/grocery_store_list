@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import {View, FlatList, StyleSheet, TouchableOpacity} from 'react-native';
 import { Text, List, IconButton, ActivityIndicator, Divider } from 'react-native-paper';
 import { useAuth } from '@/context/authContext';
 import { useGroups } from '@/context/groupContext';
+import {useTheme} from "@/context/themeContext";
+import {router} from "expo-router";
 
 export default function InvitationsScreen() {
     const { pendingInvites, respondToInvitation, refreshSocialData } = useAuth();
     const { loadGroups } = useGroups();
+    const { colors } = useTheme();
     const [processingId, setProcessingId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -29,7 +32,10 @@ export default function InvitationsScreen() {
 
     if (pendingInvites.length === 0) {
         return (
-            <View style={styles.centered}>
+            <View style={[styles.centered, {backgroundColor: colors.primary}]}>
+                <TouchableOpacity onPress={() => router.back()} style={[styles.btn, styles.btnCancel]}>
+                    <Text style={styles.btnCancelText}>Return</Text>
+                </TouchableOpacity>
                 <List.Icon icon="email-outline" color="orange" />
                 <Text variant="bodyMedium">No pending invitations found.</Text>
             </View>
@@ -73,5 +79,8 @@ export default function InvitationsScreen() {
 
 const styles = StyleSheet.create({
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    actionRow: { flexDirection: 'row', alignItems: 'center' }
+    actionRow: { flexDirection: 'row', alignItems: 'center' },
+    btnCancelText: { color: '#007AFF', fontWeight: '600' },
+    btn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    btnCancel: { backgroundColor: '#f2f2f7' },
 });

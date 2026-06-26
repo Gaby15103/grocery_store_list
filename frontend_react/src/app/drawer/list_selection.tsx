@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar} from 'react-native';
-import {useLocalSearchParams} from 'expo-router';
+import {router, useLocalSearchParams} from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import {useGroups} from "@/context/groupContext";
 import {useLists} from "@/context/listContext"
@@ -19,7 +19,7 @@ export default function ListSelectionScreen() {
     }, [groupId]);
 
     const onPress = (listId: string) => {
-
+        router.replace({ pathname: '/drawer/grocery_list_view', params: { sessionId: listId } });
     }
 
     const renderItem = ({ item }: { item: GroceryList }) => {

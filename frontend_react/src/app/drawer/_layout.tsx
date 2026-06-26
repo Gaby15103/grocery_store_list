@@ -5,7 +5,7 @@ import { DrawerContentScrollView, DrawerItemList } from 'expo-router/drawer';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Picker } from '@react-native-picker/picker';
-import { useRouter } from 'expo-router';
+import {router, useRouter} from 'expo-router';
 import { useGroups } from "@/context/groupContext";
 import { useAuth } from "@/context/authContext";
 import { useTheme } from "@/context/themeContext";
@@ -15,6 +15,8 @@ function CustomDrawerContent(props: any) {
     const { groups, activeGroupId, changeActiveGroup } = useGroups();
     const { colors } = useTheme();
     const router = useRouter();
+
+    const currentRoute = props.state.routes[props.state.index]?.name;
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.card }}>
@@ -30,8 +32,25 @@ function CustomDrawerContent(props: any) {
                     {isLoggedIn && <Text style={styles.drawerSubtitle}>{userProfile?.email}</Text>}
                 </View>
 
-                {/* React Navigation child links item list */}
-                <DrawerItemList {...props} />
+                <TouchableOpacity
+                    style={[
+                        styles.manualTile,
+                        currentRoute === 'home' && { backgroundColor: `${colors.primary}15` } // 15% opacity primary accent background if active
+                    ]}
+                    onPress={() => router.navigate('/drawer/home')}
+                >
+                    <Ionicons
+                        name="speedometer-outline"
+                        size={22}
+                        color={currentRoute === 'home' ? colors.primary : colors.subtext}
+                    />
+                    <Text style={[
+                        styles.manualTileText,
+                        { color: currentRoute === 'home' ? colors.primary : colors.text, fontWeight: currentRoute === 'home' ? '600' : '400' }
+                    ]}>
+                        Dashboard
+                    </Text>
+                </TouchableOpacity>
 
                 <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
                 <Text style={[styles.sectionLabel, { color: colors.subtext }]}>Active Group</Text>
@@ -66,7 +85,7 @@ function CustomDrawerContent(props: any) {
                     style={styles.drawerTile}
                     onPress={() => {
                         refreshSocialData();
-                        router.push('/modals/send_invite');
+                        router.push('/modals/invitations');
                     }}
                 >
                     <Ionicons name="mail-outline" size={22} color="orange" />
@@ -77,6 +96,25 @@ function CustomDrawerContent(props: any) {
                         </View>
                     )}
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.manualTile,
+                        currentRoute === 'settings' && { backgroundColor: `${colors.primary}15` } // 15% opacity primary accent background if active
+                    ]}
+                    onPress={() => router.navigate('/drawer/settings')}
+                >
+                    <Ionicons
+                        name="cog"
+                        size={22}
+                        color={currentRoute === 'settings' ? colors.primary : colors.subtext}
+                    />
+                    <Text style={[
+                        styles.manualTileText,
+                        { color: currentRoute === 'settings' ? colors.primary : colors.text, fontWeight: currentRoute === 'settings' ? '600' : '400' }
+                    ]}>
+                        Settings
+                    </Text>
+                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -85,51 +123,55 @@ function CustomDrawerContent(props: any) {
 export default function DrawerLayout() {
     const { groups, activeGroupId, handleShareAction } = useGroups();
     const { colors } = useTheme(); // 👈 Consume context color palette for headers
+    const { isLoggedIn, userProfile, pendingInvites, refreshSocialData } = useAuth();
     const activeGroup = groups.find(g => g.id === activeGroupId) || { id: '', name: 'None', isShared: false };
 
     return (
         <Drawer
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: '#ffffff',
+                headerStyle: { backgroundColor: colors.primary }, // Dynamically switch native header tint profile
+                headerTintColor: colors.text,
                 drawerStyle: { backgroundColor: colors.card },
                 drawerActiveTintColor: colors.primary,
                 drawerInactiveTintColor: colors.subtext,
             }}
         >
-            {/* The screen you WANT people to see */}
             <Drawer.Screen
                 name="home"
                 options={{
-                    title: activeGroup.id ? activeGroup.name : 'Dashboard',
-                    drawerLabel: 'Dashboard',
-                    drawerIcon: ({ color }) => <Ionicons name="speedometer-outline" size={22} color={color} />,
+                    title: 'Dashboard',
                 }}
             />
 
-            {/* HIDE settings from showing up automatically in the drawer list */}
-            <Drawer.Screen
-                name="settings"
-                options={{
-                    drawerItemStyle: {  }, // 👈 Hides it from the sidebar
-                    title: 'Settings',
-                }}
-            />
-
-            {/* HIDE list_selection from showing up automatically in the drawer list */}
+            {/* List Selection: Explicitly contains the share action icon */}
             <Drawer.Screen
                 name="list_selection"
                 options={{
-                    drawerItemStyle: { display: 'none' }, // 👈 Hides it from the sidebar
-                    title: 'Select List',
+                    title: activeGroup.id ? activeGroup.name : 'Select List',
+                    headerRight: () => (
+                        activeGroup.id ? (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    refreshSocialData();
+                                    router.push('/modals/send_invite');
+                                }}
+                                style={{ marginRight: 16 }}
+                            >
+                                <Ionicons
+                                    name="person-add"
+                                    size={24}
+                                    color={colors.text}
+                                />
+                            </TouchableOpacity>
+                        ) : null
+                    )
                 }}
             />
         </Drawer>
     );
 }
 
-// Global fixed layout properties. Variable rules were extracted up into context injection points above.
 const styles = StyleSheet.create({
     drawerHeader: {
         padding: 20,
@@ -188,5 +230,18 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 11,
         fontWeight: 'bold',
-    }
+    },
+    manualTile: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 8,
+        marginVertical: 2,
+        borderRadius: 8,
+    },
+    manualTileText: {
+        fontSize: 15,
+        marginLeft: 32,
+    },
 });

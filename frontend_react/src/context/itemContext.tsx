@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, {createContext, useContext, useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { itemRepository, FilePayload } from '../repositories/itemRepository';
-import { GroceryItem, ItemStatus, GroceryItemModel } from '../types/models';
+import {itemRepository, FilePayload} from '@/repositories/itemRepository';
+import {GroceryItem, ItemStatus, GroceryItemModel} from '@/types/models';
 
 export type ItemSortType = 'alphabetical' | 'created' | 'status' | 'hasNote' | 'hasImage';
 
@@ -13,18 +13,32 @@ interface ItemContextType {
     currentSort: ItemSortType;
     isInverse: boolean;
     setOpenedList: (listId: string | null) => void;
+    applySort: () => Promise<void>
     setSort: (type: ItemSortType, inverse?: boolean) => Promise<void>;
     loadItems: (listId: string, groupId: string) => Promise<void>;
-    addItem: (params: { name: string; listId: string; groupId: string; note?: string; imageFile?: FilePayload }) => Promise<void>;
+    addItem: (params: {
+        name: string;
+        listId: string;
+        groupId: string;
+        note?: string;
+        imageFile?: FilePayload
+    }) => Promise<void>;
     toggleStatus: (item: GroceryItem, groupId: string, forceStatus?: ItemStatus) => Promise<void>;
     removeItem: (item: GroceryItem, groupId: string) => Promise<void>;
-    updateItemDetails: (params: { item: GroceryItem; newName: string; newNote?: string; newImageFile?: FilePayload; shouldClearImage?: boolean; groupId?: string }) => Promise<void>;
+    updateItemDetails: (params: {
+        item: GroceryItem;
+        newName: string;
+        newNote?: string;
+        newImageFile?: FilePayload;
+        shouldClearImage?: boolean;
+        groupId?: string
+    }) => Promise<void>;
     syncFromSocket: (eventType: string, data: any) => void;
 }
 
 const ItemContext = createContext<ItemContextType | undefined>(undefined);
 
-export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [currentItems, setCurrentItems] = useState<GroceryItem[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,14 +58,21 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 case 'alphabetical':
                     cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
                     break;
-                case 'hasNote':
-                    cmp = (b.note?.length ?? 0) - (a.note?.length ?? 0);
+                case 'status': {
+                    // Sort weights: pending (1) first, then bought (2), then discarded (3)
+                    const statusOrder: Record<string, number> = { pending: 1, bought: 2, discarded: 3 };
+                    cmp = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
                     break;
-                case 'hasImage':
+                }
+                case 'hasNote':
+                    cmp = (b.note?.trim().length ?? 0) - (a.note?.trim().length ?? 0);
+                    break;
+                case 'hasImage': {
                     const aHas = a.imagePath ? 1 : 0;
                     const bHas = b.imagePath ? 1 : 0;
                     cmp = bHas - aHas;
                     break;
+                }
                 case 'created':
                 default:
                     cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -60,6 +81,9 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return inverse ? -cmp : cmp;
         });
     };
+    const applySort = async ()=> {
+        setCurrentItems(prev => _sortItems(prev, currentSort, isInverse));
+    }
 
     const setSort = async (type: ItemSortType, inverse?: boolean) => {
         const targetInverse = inverse !== undefined ? inverse : isInverse;
@@ -156,7 +180,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentItems(prev => [tempItem, ...prev]);
 
         try {
-            await itemRepository.addItemToList({ name, listId, groupId, note, imageFile });
+            await itemRepository.addItemToList({name, listId, groupId, note, imageFile});
             await loadItems(listId, groupId);
         } catch (error: any) {
             if (error.message?.includes("queued") || error.message?.includes("Offline")) {
@@ -181,11 +205,11 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Apply mutation instantly locally
         setCurrentItems(prev =>
-            prev.map(i => (i.id === item.id ? { ...i, status: targetStatus } : i))
+            prev.map(i => (i.id === item.id ? {...i, status: targetStatus} : i))
         );
 
         try {
-            await itemRepository.updateItem({ ...item, status: targetStatus }, groupId);
+            await itemRepository.updateItem({...item, status: targetStatus}, groupId);
             setErrorMessage(null);
         } catch (error: any) {
             if (error.message?.includes("queued") || error.message?.includes("Offline")) {
@@ -193,7 +217,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
                 // Rollback on server error rejection
                 setCurrentItems(prev =>
-                    prev.map(i => (i.id === item.id ? { ...i, status: oldStatus } : i))
+                    prev.map(i => (i.id === item.id ? {...i, status: oldStatus} : i))
                 );
                 setErrorMessage("Sync failed: Server rejected the change.");
             }
@@ -273,6 +297,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 currentListId,
                 currentSort,
                 isInverse,
+                applySort,
                 setOpenedList,
                 setSort,
                 loadItems,

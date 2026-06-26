@@ -83,6 +83,7 @@ export const GroceryListModel = {
 // ==========================================================================
 
 export type ItemStatus = 'pending' | 'bought' | 'discarded';
+export type ItemSortType = 'alphabetical'| 'created'| 'status'| 'hasNote'| 'hasImage';
 
 export interface GroceryItem {
     id?: string;
