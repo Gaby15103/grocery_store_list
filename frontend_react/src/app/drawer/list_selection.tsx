@@ -1,25 +1,38 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar} from 'react-native';
-import {router, useLocalSearchParams} from 'expo-router';
+import {router, Stack, useLocalSearchParams} from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import {useGroups} from "@/context/groupContext";
 import {useLists} from "@/context/listContext"
 import {GroceryList} from "@/types/models";
 import {useTheme} from "@/context/themeContext";
+import {Ionicons} from "@expo/vector-icons";
 export default function ListSelectionScreen() {
-    const {groupId} = useLocalSearchParams<{ groupId: string }>();
+    const { groupId, refreshKey } = useLocalSearchParams<{ groupId: string, refreshKey: string }>();
     const {groups, activeGroupId, changeActiveGroup} = useGroups();
     const {loadLists, lists} = useLists();
     const { colors } = useTheme();
 
+    const lastLoadedGroupId = useRef<string | null>(null);
+
     useEffect(() => {
         if (groupId) {
+
+            lastLoadedGroupId.current = groupId;
+
             loadLists(groupId, true);
         }
-    }, [groupId]);
+        return () => {
+            if (!groupId) {
+                lastLoadedGroupId.current = null;
+            }
+        };
+    }, [groupId, refreshKey]);
 
     const onPress = (listId: string) => {
-        router.replace({ pathname: '/drawer/grocery_list_view', params: { sessionId: listId } });
+        router.replace({ pathname: '/drawer/grocery_list_view', params: { sessionId: listId,
+                refreshKey: Date.now().toString()
+            } });
     }
 
     const renderItem = ({ item }: { item: GroceryList }) => {
@@ -44,6 +57,22 @@ export default function ListSelectionScreen() {
 
     return (
         <View style={{backgroundColor: colors.background, flex: 1}}>
+            <Stack.Screen
+                options={{
+                    headerLeft: () => (
+                        <TouchableOpacity
+                            onPress={() => router.replace({pathname: '/drawer/home'})}
+                            style={{ marginLeft: 16, marginRight: 5 }}
+                        >
+                            <Ionicons
+                                name="arrow-back"
+                                size={24}
+                                color={colors.text}
+                            />
+                        </TouchableOpacity>
+                    ),
+                }}
+            />
             <FlatList
                 data={lists}
                 renderItem={renderItem}

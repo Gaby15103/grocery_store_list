@@ -10,7 +10,7 @@ interface ListContextType {
     setOpenedList: (id: string | null) => void;
     createList: (name: string, groupId: string, isShared: boolean) => Promise<void>;
     deleteList: (listId: string, groupId: string, isShared: boolean) => Promise<void>;
-    archiveList: (listId: string, newName: string, groupId: string, isShared: boolean) => Promise<void>;
+    archiveList: (listId: string, newName: string, groupId: string, isShared: boolean) => Promise<string>;
 }
 
 const ListContext = createContext<ListContextType | undefined>(undefined);
@@ -61,6 +61,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setOpenedList(newList.id);
 
             await loadLists(groupId, isShared);
+
+            return newList.id;
         } catch (e) {
             console.error("Archive Error:", e);
             throw e;

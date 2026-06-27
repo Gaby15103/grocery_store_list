@@ -1,5 +1,5 @@
 import { BaseApi } from './baseApi';
-import {GroceryGroup} from "@/types/models";
+import {GroceryGroup, GroceryGroupModel} from "@/types/models";
 
 
 class GroupApiClient extends BaseApi {
@@ -21,6 +21,8 @@ class GroupApiClient extends BaseApi {
         return this.request<GroceryGroup[]>({
             method: 'GET',
             path: '/groups',
+            fromJson: (json) =>
+                (json as any[]).map((g) => GroceryGroupModel.fromJson(g)),
         });
     }
 

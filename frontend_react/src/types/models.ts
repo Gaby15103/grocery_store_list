@@ -23,6 +23,7 @@ export interface UserProfile {
 export interface GroceryGroup {
     id: string;
     name: string;
+    ownerId: string;
     isShared: boolean;
 }
 
@@ -31,7 +32,8 @@ export const GroceryGroupModel = {
         return {
             id: json?.id?.toString() ?? '',
             name: json?.name ?? 'Unknown Group',
-            isShared: json?.isShared ?? true, // Preserving your logic fallback
+            ownerId: json?.ownerId?.toString() ?? '',
+            isShared: !!json?.UserGroup,
         };
     },
 
@@ -39,7 +41,7 @@ export const GroceryGroupModel = {
         return {
             id: group.id,
             name: group.name,
-            isShared: group.isShared,
+            ownerId: group.ownerId,
         };
     }
 };

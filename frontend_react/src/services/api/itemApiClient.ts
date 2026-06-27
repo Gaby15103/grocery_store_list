@@ -1,5 +1,6 @@
 import { BaseApi } from './baseApi';
 import {GroceryItem} from "@/types/models";
+import {Platform} from "react-native";
 
 export interface UploadFilePayload {
     uri: string;
@@ -46,20 +47,20 @@ class ItemApiClient extends BaseApi {
      * PUT: Update the item
      */
     async uploadImage(file: UploadFilePayload): Promise<string | null> {
-        const formData = new FormData();
-        formData.append('file', {
-            uri: file.uri,
-            name: file.name,
-            type: file.type,
-        } as any);
+        try {
+            const result = await this.uploadNativeMultipart<{ path: string | null }>({
+                method: 'POST',
+                path: '/upload',
+                file: file,
+                fieldName: 'file',
+            });
 
-        const result = await this.request<{ path: string | null }>({
-            method: 'POST',
-            path: '/upload',
-            body: formData,
-        });
+            return result ? result.path : null;
 
-        return result ? result.path : null;
+        } catch (error) {
+            console.error("Upload image execution sequence failed:", error);
+            throw error;
+        }
     }
 }
 

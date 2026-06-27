@@ -25,6 +25,7 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     useEffect(() => {
         const initializeGroups = async () => {
+            await groupRepository.refreshGroups();
             const cachedGroups = await groupRepository.getCachedGroups();
             const activeId = await groupRepository.getActiveGroupId();
 
@@ -41,6 +42,7 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const isCurrentGroupShared = (() => {
         const currentGroup = groups.find(g => g.id === activeGroupId);
+        console.log('currentGroup', currentGroup);
         return currentGroup ? currentGroup.isShared : false;
     })();
 

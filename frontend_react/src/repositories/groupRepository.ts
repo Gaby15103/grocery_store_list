@@ -24,6 +24,7 @@ class GroupRepository {
     async refreshGroups(): Promise<GroceryGroup[]> {
         try {
             const remoteGroups = await groupApiClient.fetchGroups();
+            console.log('Remote Groups: ' + JSON.stringify(remoteGroups));
 
             // Overwrites and updates local cache like: box.clear() -> box.put()
             await AsyncStorage.setItem(this.GROUPS_KEY, JSON.stringify(remoteGroups));

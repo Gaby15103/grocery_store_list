@@ -1,33 +1,39 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Drawer } from 'expo-router/drawer';
-import { DrawerContentScrollView, DrawerItemList } from 'expo-router/drawer';
-import { Ionicons } from '@expo/vector-icons';
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
+import {Drawer} from 'expo-router/drawer';
+import {DrawerContentScrollView, DrawerItemList} from 'expo-router/drawer';
+import {Ionicons} from '@expo/vector-icons';
 
-import { Picker } from '@react-native-picker/picker';
+import {Picker} from '@react-native-picker/picker';
 import {router, useRouter} from 'expo-router';
-import { useGroups } from "@/context/groupContext";
-import { useAuth } from "@/context/authContext";
-import { useTheme } from "@/context/themeContext";
+import {useGroups} from "@/context/groupContext";
+import {useAuth} from "@/context/authContext";
+import {useTheme} from "@/context/themeContext";
+import CustomDropdown from "@/components/CustomDropdown";
+import {GroceryGroup} from "@/types/models";
 
 function CustomDrawerContent(props: any) {
-    const { isLoggedIn, userProfile, pendingInvites, refreshSocialData } = useAuth();
-    const { groups, activeGroupId, changeActiveGroup } = useGroups();
-    const { colors } = useTheme();
+    const {isLoggedIn, userProfile, pendingInvites, refreshSocialData} = useAuth();
+    const {groups, activeGroupId, changeActiveGroup} = useGroups();
+    const {colors} = useTheme();
     const router = useRouter();
 
     const currentRoute = props.state.routes[props.state.index]?.name;
 
+    const handleGroupSelection = () => {
+
+    }
+
     return (
-        <View style={{ flex: 1, backgroundColor: colors.card }}>
+        <View style={{flex: 1, backgroundColor: colors.card}}>
             <ScrollView
                 {...props}
-                contentContainerStyle={{ flexGrow: 1, paddingTop: 0 }}
+                contentContainerStyle={{flexGrow: 1, paddingTop: 0}}
                 bounces={false}
             >
                 {/* Header block uses global brand primary or adapts to theme state */}
-                <View style={[styles.drawerHeader, { backgroundColor: colors.primary }]}>
-                    <Ionicons name="cart" size={42} color="white" />
+                <View style={[styles.drawerHeader, {backgroundColor: colors.primary}]}>
+                    <Ionicons name="cart" size={42} color="white"/>
                     <Text style={styles.drawerTitle}>Grocery Master</Text>
                     {isLoggedIn && <Text style={styles.drawerSubtitle}>{userProfile?.email}</Text>}
                 </View>
@@ -35,7 +41,7 @@ function CustomDrawerContent(props: any) {
                 <TouchableOpacity
                     style={[
                         styles.manualTile,
-                        currentRoute === 'home' && { backgroundColor: `${colors.primary}15` } // 15% opacity primary accent background if active
+                        currentRoute === 'home' && {backgroundColor: `${colors.primary}15`} // 15% opacity primary accent background if active
                     ]}
                     onPress={() => router.navigate('/drawer/home')}
                 >
@@ -46,38 +52,46 @@ function CustomDrawerContent(props: any) {
                     />
                     <Text style={[
                         styles.manualTileText,
-                        { color: currentRoute === 'home' ? colors.primary : colors.text, fontWeight: currentRoute === 'home' ? '600' : '400' }
+                        {
+                            color: currentRoute === 'home' ? colors.primary : colors.text,
+                            fontWeight: currentRoute === 'home' ? '600' : '400'
+                        }
                     ]}>
                         Dashboard
                     </Text>
                 </TouchableOpacity>
 
-                <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-                <Text style={[styles.sectionLabel, { color: colors.subtext }]}>Active Group</Text>
+                <View style={[styles.sectionDivider, {backgroundColor: colors.border}]}/>
+                <View style={{zIndex: 5000, overflow: 'visible'}}>
+                    <Text style={[styles.sectionLabel, {color: colors.subtext}]}>Active Group</Text>
 
-                {/* Main context picker card */}
-                <View style={[styles.pickerContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                    <Picker
-                        selectedValue={activeGroupId}
-                        dropdownIconColor={colors.text}
-                        style={{ color: colors.text }}
-                        onValueChange={(itemValue) => {
-                            if (itemValue) {
-                                changeActiveGroup(itemValue);
-                                router.replace({ pathname: '/drawer/list_selection', params: { groupId: itemValue } });
-                            }
-                        }}
-                    >
-                        <Picker.Item label="Select Group" value="" style={{ color: colors.subtext, backgroundColor: colors.background }} />
-                        {groups.map((g) => (
-                            <Picker.Item
-                                key={g.id}
-                                label={`${g.name} ${g.isShared ? '☁️' : ''}`}
-                                value={g.id}
-                                style={{ color: colors.text, backgroundColor: colors.background }}
-                            />
-                        ))}
-                    </Picker>
+                    {/* 2. Place Custom Dropdown inside its own container with high zIndex and visible overflow */}
+                    <View style={styles.dropdownWrapper}>
+                        <CustomDropdown<GroceryGroup>
+                            data={groups}
+                            placeholder="Choose a group..."
+                            colors={colors}
+                            onSelect={(group) => {
+                                changeActiveGroup(group.id);
+                                router.replace({
+                                    pathname: '/drawer/list_selection',
+                                    params: {groupId: group.id, refreshKey: Date.now().toString()}
+                                });
+                            }}
+                            getLabel={(item) => item.name}
+                            getValue={(item) => item.id}
+                            renderCustomItem={(item) => (
+                                <View style={styles.customRow}>
+                                    <Text style={[styles.itemName, {color: colors.text}]}>{item.name}</Text>
+                                    {item.isShared && (
+                                        <View style={styles.badge}>
+                                            <Text style={styles.badgeText}>Shared</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        />
+                    </View>
                 </View>
 
                 {/* Secondary list navigation items */}
@@ -88,8 +102,8 @@ function CustomDrawerContent(props: any) {
                         router.push('/modals/invitations');
                     }}
                 >
-                    <Ionicons name="mail-outline" size={22} color="orange" />
-                    <Text style={[styles.tileText, { color: colors.text }]}>Received Invitations</Text>
+                    <Ionicons name="mail-outline" size={22} color="orange"/>
+                    <Text style={[styles.tileText, {color: colors.text}]}>Received Invitations</Text>
                     {pendingInvites.length > 0 && (
                         <View style={styles.badge}>
                             <Text style={styles.badgeText}>{pendingInvites.length}</Text>
@@ -99,7 +113,7 @@ function CustomDrawerContent(props: any) {
                 <TouchableOpacity
                     style={[
                         styles.manualTile,
-                        currentRoute === 'settings' && { backgroundColor: `${colors.primary}15` } // 15% opacity primary accent background if active
+                        currentRoute === 'settings' && {backgroundColor: `${colors.primary}15`} // 15% opacity primary accent background if active
                     ]}
                     onPress={() => router.navigate('/drawer/settings')}
                 >
@@ -110,7 +124,10 @@ function CustomDrawerContent(props: any) {
                     />
                     <Text style={[
                         styles.manualTileText,
-                        { color: currentRoute === 'settings' ? colors.primary : colors.text, fontWeight: currentRoute === 'settings' ? '600' : '400' }
+                        {
+                            color: currentRoute === 'settings' ? colors.primary : colors.text,
+                            fontWeight: currentRoute === 'settings' ? '600' : '400'
+                        }
                     ]}>
                         Settings
                     </Text>
@@ -121,18 +138,18 @@ function CustomDrawerContent(props: any) {
 }
 
 export default function DrawerLayout() {
-    const { groups, activeGroupId, handleShareAction } = useGroups();
-    const { colors } = useTheme(); // 👈 Consume context color palette for headers
-    const { isLoggedIn, userProfile, pendingInvites, refreshSocialData } = useAuth();
-    const activeGroup = groups.find(g => g.id === activeGroupId) || { id: '', name: 'None', isShared: false };
+    const {groups, activeGroupId, handleShareAction} = useGroups();
+    const {colors} = useTheme(); // 👈 Consume context color palette for headers
+    const {isLoggedIn, userProfile, pendingInvites, refreshSocialData} = useAuth();
+    const activeGroup = groups.find(g => g.id === activeGroupId) || {id: '', name: 'None', isShared: false};
 
     return (
         <Drawer
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
-                headerStyle: { backgroundColor: colors.primary }, // Dynamically switch native header tint profile
+                headerStyle: {backgroundColor: colors.primary}, // Dynamically switch native header tint profile
                 headerTintColor: colors.text,
-                drawerStyle: { backgroundColor: colors.card },
+                drawerStyle: {backgroundColor: colors.card},
                 drawerActiveTintColor: colors.primary,
                 drawerInactiveTintColor: colors.subtext,
             }}
@@ -156,7 +173,7 @@ export default function DrawerLayout() {
                                     refreshSocialData();
                                     router.push('/modals/send_invite');
                                 }}
-                                style={{ marginRight: 16 }}
+                                style={{marginRight: 16}}
                             >
                                 <Ionicons
                                     name="person-add"
@@ -183,6 +200,23 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         marginTop: 8,
+    },
+    dropdownWrapper: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        position: 'relative',
+        zIndex: 9999,          // Forces layout layer depth on iOS
+        elevation: 9999,       // Forces layout layer depth on Android
+        overflow: 'visible',   // Prevents parent container cropping
+    },
+    customRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    itemName: {
+        fontSize: 16,
+        color: '#333',
     },
     drawerSubtitle: {
         color: 'rgba(255,255,255,0.7)',

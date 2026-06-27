@@ -116,6 +116,7 @@ class ItemRepository {
         if (shouldClearImage) {
             item.imagePath = undefined;
         } else if (newImageFile) {
+            console.log(newImageFile);
             const uploadedPath = await itemApiClient.uploadImage(newImageFile as any);
             if (uploadedPath) {
                 item.imagePath = uploadedPath;

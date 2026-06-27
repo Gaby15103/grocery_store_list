@@ -11,18 +11,20 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import {useAuth} from "@/context/authContext";
+import { useAuth } from "@/context/authContext";
+import {useTheme} from "@/context/themeContext";
 
 export default function SetupScreen() {
     const { register, linkWithCode, isLoading } = useAuth();
     const router = useRouter();
 
-    // Form State Fields
+    // Champs d'état du formulaire
     const [isSyncingMode, setIsSyncingMode] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [syncCodeInput, setSyncCodeInput] = useState('');
+    const { colors } = useTheme();
 
     const handleRegisterSubmit = async () => {
         const fNameTrimmed = firstName.trim();
@@ -30,7 +32,7 @@ export default function SetupScreen() {
         const emailTrimmed = email.trim();
 
         if (!fNameTrimmed || !lNameTrimmed || !emailTrimmed.includes('@')) {
-            Alert.alert('Validation Error', 'Please complete all fields with a valid email address.');
+            Alert.alert('Erreur de validation', 'Veuillez remplir tous les champs avec une adresse courriel valide.');
             return;
         }
 
@@ -38,7 +40,7 @@ export default function SetupScreen() {
             await register(fNameTrimmed, lNameTrimmed, emailTrimmed);
             router.replace('/drawer/home');
         } catch (error: any) {
-            Alert.alert('Registration Failed', error.message || 'Something went wrong.');
+            Alert.alert('Échec de l’inscription', error.message || 'Une erreur est survenue.');
         }
     };
 
@@ -46,7 +48,7 @@ export default function SetupScreen() {
         const codeTrimmed = syncCodeInput.trim();
 
         if (!codeTrimmed) {
-            Alert.alert('Validation Error', 'Please enter a synchronization code.');
+            Alert.alert('Erreur de validation', 'Veuillez saisir un code de synchronisation.');
             return;
         }
 
@@ -54,92 +56,95 @@ export default function SetupScreen() {
             await linkWithCode(codeTrimmed);
             router.replace('/drawer/home');
         } catch (error: any) {
-            // Mimics: L10n.of(context, 'sync_error')
-            Alert.alert('Sync Error', 'Could not sync account with this code. Verify it and try again.');
+            Alert.alert('Erreur de synchronisation', 'Impossible de synchroniser le compte avec ce code. Vérifiez-le et réessayez.');
         }
     };
 
     if (isLoading) {
         return (
-            <View style={styles.centerContainer}>
+            <View style={[styles.centerContainer, {backgroundColor: colors.primary}]}>
                 <ActivityIndicator size="large" color="#007AFF" />
             </View>
         );
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.container, {backgroundColor: colors.background}]} keyboardShouldPersistTaps="handled">
             <View style={styles.logoSection}>
                 <Ionicons name="basket" size={90} color="#007AFF" />
-                <Text style={styles.title}>
-                    {isSyncingMode ? 'Sync Account' : 'Welcome to Grocery Master'}
+                <Text style={[styles.title,{color: colors.text}]}>
+                    {isSyncingMode ? 'Synchroniser le compte' : 'Bienvenue sur Grocery Master'}
                 </Text>
             </View>
 
             {!isSyncingMode ? (
                 <View style={styles.formContainer}>
-                    <Text style={styles.subtitle}>Create an account locally or link an existing group profile to get started.</Text>
+                    <Text style={[styles.subtitle, {color: colors.subtext}]}>Créez un compte localement ou associez un profil de groupe existant pour commencer.</Text>
 
-                    <Text style={styles.label}>First Name</Text>
+                    <Text style={[styles.label, {color: colors.subtext}]}>Prénom</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, {backgroundColor: colors.inputBg, color: colors.subtext, borderColor: colors.border}]}
                         value={firstName}
+                        placeholderTextColor={colors.subtext}
                         onChangeText={setFirstName}
-                        placeholder="John"
+                        placeholder="Jean"
                     />
 
-                    <Text style={styles.label}>Last Name</Text>
+                    <Text style={[styles.label, {color: colors.subtext}]}>Nom</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, {backgroundColor: colors.inputBg, color: colors.subtext, borderColor: colors.border}]}
                         value={lastName}
+                        placeholderTextColor={colors.subtext}
                         onChangeText={setLastName}
-                        placeholder="Doe"
+                        placeholder="Tremblay"
                     />
 
-                    <Text style={styles.label}>Email Address</Text>
+                    <Text style={[styles.label, {color: colors.subtext}]}>Adresse courriel</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, {backgroundColor: colors.inputBg, color: colors.subtext, borderColor: colors.border}]}
                         value={email}
+                        placeholderTextColor={colors.subtext}
                         onChangeText={setEmail}
-                        placeholder="john.doe@example.com"
+                        placeholder="jean.tremblay@exemple.com"
                         autoCapitalize="none"
                         keyboardType="email-address"
                     />
 
                     <TouchableOpacity style={styles.primaryButton} onPress={handleRegisterSubmit}>
-                        <Text style={styles.primaryButtonText}>Get Started</Text>
+                        <Text style={styles.primaryButtonText}>Commencer</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={() => setIsSyncingMode(true)}
                     >
-                        <Text style={styles.linkButtonText}>Already have an account? Sync it</Text>
+                        <Text style={styles.linkButtonText}>Vous avez déjà un compte ? Synchronisez-le</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
                 <View style={styles.formContainer}>
-                    <Text style={styles.subtitle}>Enter the synchronization token generated by your alternate linked mobile terminal node.</Text>
+                    <Text style={styles.subtitle}>Saisissez le jeton de synchronisation généré par votre autre appareil mobile connecté.</Text>
 
-                    <Text style={styles.label}>Sync Code</Text>
+                    <Text style={styles.label}>Code de synchronisation</Text>
                     <TextInput
-                        style={[styles.input, styles.codeField]}
+                        style={[styles.input, styles.codeField, {backgroundColor: colors.inputBg, color: colors.subtext, borderColor: colors.border}]}
                         value={syncCodeInput}
+                        placeholderTextColor={colors.subtext}
                         onChangeText={setSyncCodeInput}
-                        placeholder="Paste code sequence here..."
+                        placeholder="Collez la séquence de code ici..."
                         autoCapitalize="none"
                         autoCorrect={false}
                     />
 
                     <TouchableOpacity style={styles.primaryButton} onPress={handleSyncSubmit}>
-                        <Text style={styles.primaryButtonText}>Sync Now</Text>
+                        <Text style={styles.primaryButtonText}>Synchroniser maintenant</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={() => setIsSyncingMode(false)}
                     >
-                        <Text style={styles.linkButtonText}>Back to registration profile</Text>
+                        <Text style={styles.linkButtonText}>Retour au profil d'inscription</Text>
                     </TouchableOpacity>
                 </View>
             )}

@@ -10,9 +10,14 @@ class AuthRepository {
      */
     private async getUniqueDeviceId(): Promise<string> {
         if (Platform.OS === 'android') {
-            return Application.getAndroidId() || 'android-id';
+            let deviceId = Application.getAndroidId();
+            await AsyncStorage.setItem('deviceId', deviceId);
+            return deviceId;
         } else if (Platform.OS === 'ios') {
             const id = await Application.getIosIdForVendorAsync();
+            if (id != null) {
+                await AsyncStorage.setItem('deviceId', id);
+            }
             return id || 'ios-id';
         }
         return 'unknown-device';
@@ -28,7 +33,10 @@ class AuthRepository {
     }
 
     async getSyncCode(): Promise<string> {
-        const deviceId = await AsyncStorage.getItem('deviceId');
+        let deviceId = await AsyncStorage.getItem('deviceId');
+        if (deviceId == "Not Generated") {
+            deviceId = await this.getUniqueDeviceId()
+        }
         return deviceId || "Not Generated";
     }
 

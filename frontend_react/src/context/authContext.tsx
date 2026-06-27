@@ -63,7 +63,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await authRepository.registerUser(fName, lName, email);
             setIsLoggedIn(true);
 
-            // Refresh sync registration code token states
             const code = await authRepository.getSyncCode();
             setSyncCode(code);
 
