@@ -237,11 +237,10 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
 
         try {
             await itemRepository.deleteItem(item, groupId);
+            await loadItems(item.listId, groupId ?? 'default');
         } catch (error: any) {
             if (error.message?.includes("queued") || error.message?.includes("Offline")) {
-                // Action is safely recorded locally
             } else {
-                // Re-insert item on standard api failure
                 setCurrentItems(prev => {
                     const rolledBack = [...prev];
                     if (originalIndex !== -1) rolledBack.splice(originalIndex, 0, item);

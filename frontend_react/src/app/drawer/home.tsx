@@ -1,18 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { useRouter } from 'expo-router';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList} from 'react-native';
+import {useRouter} from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Ionicons } from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 
-import { useGroups } from "@/context/groupContext";
-import { useAuth } from "@/context/authContext";
-import { useTheme } from "@/context/themeContext";
-import { GroceryGroup } from "@/types/models"; // Adjusted to match your types
+import {useGroups} from "@/context/groupContext";
+import {useAuth} from "@/context/authContext";
+import {useTheme} from "@/context/themeContext";
+import {GroceryGroup} from "@/types/models";
+
+import { useLayoutAction } from './_layout';
 
 export default function HomeScreen() {
-    const { groups, changeActiveGroup } = useGroups();
-    const { isLoggedIn, userProfile, refreshSocialData } = useAuth();
-    const { colors } = useTheme();
+    const { openInvitationModal } = useLayoutAction();
+
+    const {groups, changeActiveGroup} = useGroups();
+    const {isLoggedIn, userProfile, refreshSocialData} = useAuth();
+    const {colors} = useTheme();
     const router = useRouter();
 
     const launchRecipeSite = async () => {
@@ -23,25 +27,15 @@ export default function HomeScreen() {
         }
     };
 
-    const handleInvitationsPress = () => {
-        if (!isLoggedIn) {
-            // Replace with your Toast/Notification helper if available
-            alert("No account connected");
-            return;
-        }
-        refreshSocialData();
-        router.push('/modals/send_invite');
-    };
-
     const handleGroupPress = async (groupId: string) => {
         await changeActiveGroup(groupId);
-        router.push({ pathname: '/drawer/list_selection', params: { groupId } });
+        router.push({pathname: '/drawer/list_selection', params: {groupId}});
     };
 
     // Horizontal Render Item for Recent Groups
-    const renderRecentCard = ({ item }: { item: GroceryGroup }) => (
+    const renderRecentCard = ({item}: { item: GroceryGroup }) => (
         <TouchableOpacity
-            style={[styles.recentCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[styles.recentCard, {backgroundColor: colors.card, borderColor: colors.border}]}
             onPress={() => handleGroupPress(item.id)}
             activeOpacity={0.7}
         >
@@ -51,12 +45,12 @@ export default function HomeScreen() {
                 color={item.isShared ? "#3b82f6" : "#10b981"}
             />
             <Text
-                style={[styles.cardTitle, { color: colors.text }]}
+                style={[styles.cardTitle, {color: colors.text}]}
                 numberOfLines={1}
             >
                 {item.name}
             </Text>
-            <Text style={[styles.cardSubtitle, { color: colors.subtext }]}>
+            <Text style={[styles.cardSubtitle, {color: colors.subtext}]}>
                 Active Group
             </Text>
         </TouchableOpacity>
@@ -64,23 +58,22 @@ export default function HomeScreen() {
 
     return (
         <ScrollView
-            style={[styles.container, { backgroundColor: colors.background }]}
+            style={[styles.container, {backgroundColor: colors.background}]}
             contentContainerStyle={styles.scrollContent}
             bounces={false}
         >
-            {/* Header Block Section */}
+
             <View style={styles.welcomeSection}>
-                <Text style={[styles.welcomeText, { color: colors.text }]}>
+                <Text style={[styles.welcomeText, {color: colors.text}]}>
                     Welcome, {userProfile?.firstName || 'Chef'}
                 </Text>
-                <Text style={[styles.statusText, { color: colors.subtext }]}>
+                <Text style={[styles.statusText, {color: colors.subtext}]}>
                     Kitchen Status
                 </Text>
             </View>
 
-            {/* Recent Groups Section */}
             <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent</Text>
+                <Text style={[styles.sectionTitle, {color: colors.text}]}>Recent</Text>
             </View>
             <View>
                 <FlatList
@@ -92,8 +85,6 @@ export default function HomeScreen() {
                     contentContainerStyle={styles.horizontalListPadding}
                 />
             </View>
-
-            {/* Sync / Status Banner */}
             <View style={[
                 styles.statusBanner,
                 {
@@ -107,39 +98,36 @@ export default function HomeScreen() {
                     color={isLoggedIn ? "#3b82f6" : "#f97316"}
                 />
                 <View style={styles.bannerTextContainer}>
-                    <Text style={[styles.bannerTitle, { color: colors.text }]}>
+                    <Text style={[styles.bannerTitle, {color: colors.text}]}>
                         {isLoggedIn ? "Status Online" : "Status Offline"}
                     </Text>
-                    <Text style={[styles.bannerSubtitle, { color: colors.subtext }]}>
+                    <Text style={[styles.bannerSubtitle, {color: colors.subtext}]}>
                         {isLoggedIn ? "Cloud sync enabled" : "Sync disabled"}
                     </Text>
                 </View>
             </View>
 
-            {/* Quick Access Section */}
             <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Access</Text>
+                <Text style={[styles.sectionTitle, {color: colors.text}]}>Quick Access</Text>
             </View>
 
             <View style={styles.gridContainer}>
-                {/* Recipe Site Card */}
                 <TouchableOpacity
-                    style={[styles.actionCard, { backgroundColor: 'rgba(249, 115, 22, 0.1)' }]}
+                    style={[styles.actionCard, {backgroundColor: 'rgba(249, 115, 22, 0.1)'}]}
                     onPress={launchRecipeSite}
                     activeOpacity={0.7}
                 >
-                    <Ionicons name="book-outline" size={32} color="#f97316" />
-                    <Text style={[styles.actionCardText, { color: '#f97316' }]}>Recipes</Text>
+                    <Ionicons name="book-outline" size={32} color="#f97316"/>
+                    <Text style={[styles.actionCardText, {color: '#f97316'}]}>Recipes</Text>
                 </TouchableOpacity>
 
-                {/* Invitations Card */}
                 <TouchableOpacity
-                    style={[styles.actionCard, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}
-                    onPress={handleInvitationsPress}
+                    style={[styles.actionCard, {backgroundColor: 'rgba(59, 130, 246, 0.1)'}]}
+                    onPress={openInvitationModal}
                     activeOpacity={0.7}
                 >
-                    <Ionicons name="mail-outline" size={32} color="#3b82f6" />
-                    <Text style={[styles.actionCardText, { color: '#3b82f6' }]}>Invitations</Text>
+                    <Ionicons name="mail-outline" size={32} color="#3b82f6"/>
+                    <Text style={[styles.actionCardText, {color: '#3b82f6'}]}>Invitations</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

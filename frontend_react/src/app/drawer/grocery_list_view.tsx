@@ -49,13 +49,11 @@ export default function GroceryListScreen() {
     const {activeGroupId, isCurrentGroupShared} = useGroups();
     const {archiveList, currentListId} = useLists();
 
-    // Dialog & UI Visibility states
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [sortSheetVisible, setSortSheetVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
 
-    // Form states
     const [itemName, setItemName] = useState('');
     const [itemNote, setItemNote] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -101,8 +99,6 @@ export default function GroceryListScreen() {
         };
     }, [sessionId, effectiveGroupId, refreshKey]);
 
-
-    // Media Capture Handlers
     const pickImage = async (useCamera: boolean) => {
         const permissionResult = useCamera
             ? await ImagePicker.requestCameraPermissionsAsync()
@@ -174,7 +170,6 @@ export default function GroceryListScreen() {
         const boughtCount = currentItems.filter(i => i.status === 'bought').length;
         const pendingCount = currentItems.filter(i => i.status === 'pending').length;
         const dateStr = `${new Date().getDate()}/${new Date().getMonth() + 1}`;
-        const defaultName = `Liste du ${dateStr}`;
 
         triggerAlert(
             "Terminer les courses ?",
@@ -329,7 +324,6 @@ export default function GroceryListScreen() {
                 }}
             />
 
-            {/* Floating Action Button */}
             <TouchableOpacity
                 style={[styles.fab, {backgroundColor: colors.primary}]}
                 onPress={openAddModal}
@@ -338,7 +332,6 @@ export default function GroceryListScreen() {
                 <Ionicons name="cart" size={24} color="white"/>
             </TouchableOpacity>
 
-            {/* Sort Sheet Modal */}
             <Modal transparent visible={sortSheetVisible} animationType="slide"
                    onRequestClose={() => setSortSheetVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1}
@@ -379,14 +372,12 @@ export default function GroceryListScreen() {
                 </TouchableOpacity>
             </Modal>
 
-            {/* Add / Edit Form Modal Container */}
             <Modal
                 visible={addModalVisible || editModalVisible}
                 animationType="fade"
                 transparent
                 onRequestClose={addModalVisible ? closeAddModal : closeEditModal}
             >
-                {/* Click outside target to close and wipe input states */}
                 <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
@@ -397,7 +388,6 @@ export default function GroceryListScreen() {
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                             style={{width: '100%', alignItems: 'center'}}
                         >
-                            {/* Inner Card Catching Clicks to avoid unintentional closing */}
                             <TouchableOpacity activeOpacity={1} style={[styles.dialogCard, {
                                 backgroundColor: colors.card,
                                 borderColor: colors.border
@@ -430,7 +420,6 @@ export default function GroceryListScreen() {
                                     onChangeText={setItemNote}
                                 />
 
-                                {/* Expanded / Styled Preview Frame */}
                                 {selectedImage && !clearImage && (
                                     <View style={[styles.imagePreviewContainer, {borderColor: colors.border}]}>
                                         <Image source={{uri: selectedImage}} style={styles.dialogImage}
@@ -481,7 +470,6 @@ export default function GroceryListScreen() {
                 </TouchableOpacity>
             </Modal>
 
-            {/* Global Custom Alert instance handler component hooks up here dynamically */}
             <CustomAlert
                 visible={alertConfig.visible}
                 title={alertConfig.title}
@@ -546,7 +534,6 @@ function ItemRow({
                 {isDiscarded && <Text style={{color: '#f97316', fontSize: 12}}>Discarded</Text>}
             </View>
 
-            {/* Bouton pour ouvrir le menu d'options personnalisé */}
             <TouchableOpacity
                 onPress={() => setOptionsVisible(true)}
                 style={styles.moreBtn}
@@ -554,14 +541,12 @@ function ItemRow({
                 <Ionicons name="ellipsis-vertical" size={20} color={colors.subtext}/>
             </TouchableOpacity>
 
-            {/* Bottom Sheet Menu Options */}
             <Modal
                 transparent
                 visible={optionsVisible}
                 animationType="slide"
                 onRequestClose={() => setOptionsVisible(false)}
             >
-                {/* Fermeture lors du clic à l'extérieur */}
                 <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
@@ -569,7 +554,6 @@ function ItemRow({
                 >
                     <View style={[styles.bottomSheet, {backgroundColor: colors.card}]}>
 
-                        {/* En-tête du Modal */}
                         <View style={styles.sheetHeader}>
                             <Text style={[styles.sheetTitle, {color: colors.text}]}>{item.name}</Text>
                             <Text style={[styles.sheetSubtitle, {color: colors.subtext}]}>Options de l'article</Text>
@@ -599,7 +583,6 @@ function ItemRow({
                                 <Text style={[styles.sheetOptionText, {color: colors.text}]}>Acheté</Text>
                             </TouchableOpacity>
                         )}
-                        {/* Option : Discarté */}
                         <TouchableOpacity
                             style={styles.sheetOption}
                             onPress={() => {
@@ -611,8 +594,6 @@ function ItemRow({
                             <Text style={[styles.sheetOptionText, {color: '#f97316'}]}>Discarté</Text>
                         </TouchableOpacity>
 
-
-                        {/* Option : Edit Details */}
                         <TouchableOpacity
                             style={styles.sheetOption}
                             onPress={() => {
@@ -626,7 +607,6 @@ function ItemRow({
 
                         <View style={[styles.separator, {backgroundColor: colors.border, marginVertical: 6}]}/>
 
-                        {/* Option : Delete (Destructive) */}
                         <TouchableOpacity
                             style={styles.sheetOption}
                             onPress={() => {
