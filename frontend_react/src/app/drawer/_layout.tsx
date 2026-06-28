@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useState} from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useState} from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList, Keyboard, Platform,
     TouchableWithoutFeedback, KeyboardAvoidingView
@@ -11,8 +11,10 @@ import {useGroups} from "@/context/groupContext";
 import {useAuth} from "@/context/authContext";
 import {useTheme} from "@/context/themeContext";
 import CustomDropdown from "@/components/CustomDropdown";
-import {GroceryGroup} from "@/types/models";
+import {GroceryGroup, GroceryItem} from "@/types/models";
 import {ActivityIndicator, Divider} from "react-native-paper";
+import {useSocket, useSocketEvent} from "@/context/socketContext";
+import {socketService} from "@/services/socketService";
 
 interface LayoutContextType {
     openInvitationModal: () => void;
@@ -272,6 +274,7 @@ export function useLayoutAction() {
 }
 
 export default function DrawerLayout() {
+    const { joinGroup } = useSocket();
     const [invitationModalVisible, setInvitationModalVisible] = useState(false);
     const {groups, activeGroupId} = useGroups();
     const {colors} = useTheme();
@@ -280,6 +283,27 @@ export default function DrawerLayout() {
     const openInvitationModal = () => {
         setInvitationModalVisible(true);
     };
+    useEffect(() => {
+        joinGroup(activeGroupId);
+    }, [activeGroupId]);
+
+    const handleItemAdded = useCallback((item:  GroceryItem) => {
+        console.log(item);
+    }, []);
+    const handleItemDeleted = useCallback((payload: { id: string; listId: string }) => {
+
+    }, []);
+    const handleItemUpdated = useCallback((item: { id: string; updates: Partial<{ name: string; quantity: number }> }) => {
+
+    }, []);
+    const handleListAdded = useCallback((item: { id: string; title: string; owner: string }) => {
+
+    }, []);
+
+
+    useSocketEvent('item_deleted', handleItemDeleted);
+    useSocketEvent('item_updated', handleItemUpdated);
+    useSocketEvent('list_created', handleListAdded);
 
     return (
         <LayoutContext.Provider value={{openInvitationModal}}>

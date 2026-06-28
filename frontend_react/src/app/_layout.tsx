@@ -10,10 +10,11 @@ import {ListProvider} from "@/context/listContext";
 import {ThemeProvider} from "@/context/themeContext";
 import {PortalHost} from '@rn-primitives/portal';
 import {ItemProvider} from "@/context/itemContext";
+import {SocketProvider} from "@/context/socketContext";
 
 function AppLifecycleObserver() {
     const {loadGroups} = useGroups();
-    const {syncTokenWithServer, isLoggedIn, isLoading} = useAuth();
+    const {syncTokenWithServer, isLoggedIn, isLoading, userProfile} = useAuth();
     const appState = useRef(AppState.currentState);
     const router = useRouter();
     const segments = useSegments();
@@ -64,37 +65,30 @@ function AppLifecycleObserver() {
     return <Slot/>;
 }
 
-function SocketProvider({children}: { children: ReactNode }) {
-    const {isLoggedIn, userProfile} = useAuth();
-    const {activeGroupId} = useGroups();
-
-    useEffect(() => {
-        if (!isLoggedIn || !activeGroupId) return;
-
-        console.log(`🔌 Initializing WS stream for Group: ${activeGroupId} under User: ${userProfile?.email}`);
-
-        socketService.connect(userProfile?.email as string)
-        return () => socketService.disconnect();
-    }, [isLoggedIn, activeGroupId]);
-
-    return <>{children}</>;
-}
-
 export default function RootLayout() {
     return (
         <AuthProvider>
-            <GroupProvider>
-                <SocketProvider>
-                    <ListProvider>
-                        <ThemeProvider>
-                            <ItemProvider>
-                                <AppLifecycleObserver/>
-                                <PortalHost/>
-                            </ItemProvider>
-                        </ThemeProvider>
-                    </ListProvider>
-                </SocketProvider>
-            </GroupProvider>
+            <AuthenticatedAppContent />
         </AuthProvider>
+    );
+}
+function AuthenticatedAppContent() {
+    const { userProfile, isLoggedIn } = useAuth();
+
+    const activeEmail = isLoggedIn ? userProfile?.email : null;
+
+    return (
+        <SocketProvider userEmail={activeEmail || null}>
+            <GroupProvider>
+                <ListProvider>
+                    <ThemeProvider>
+                        <ItemProvider>
+                            <AppLifecycleObserver />
+                            <PortalHost />
+                        </ItemProvider>
+                    </ThemeProvider>
+                </ListProvider>
+            </GroupProvider>
+        </SocketProvider>
     );
 }

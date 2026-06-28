@@ -23,9 +23,10 @@ import {useItems} from "@/context/itemContext";
 import {useGroups} from "@/context/groupContext";
 import {useLists} from "@/context/listContext";
 import {useTheme} from "@/context/themeContext";
-import {GroceryItem, ItemStatus} from "@/types/models";
+import {GroceryItem, GroceryList, ItemStatus} from "@/types/models";
 import CustomAlert, {AlertButton} from "@/components/CustomAlert";
 import {CONFIG} from '@/config/constants';
+import {useSocketEvent} from "@/context/socketContext";
 
 export default function GroceryListScreen() {
     const {sessionId, refreshKey} = useLocalSearchParams<{ sessionId: string, refreshKey: string }>();
@@ -98,6 +99,23 @@ export default function GroceryListScreen() {
             }
         };
     }, [sessionId, effectiveGroupId, refreshKey]);
+
+    useSocketEvent('item_added', (item: GroceryItem) => {
+        if (item.listId === sessionId ) {
+            loadItems(sessionId, effectiveGroupId);
+        }
+    });
+    useSocketEvent('item_deleted', (item: { id: string; name: string; listId: string }) => {
+        if (item.listId === sessionId) {
+            console.log('item_deleted', item);
+            loadItems(sessionId, effectiveGroupId);
+        }
+    });
+    useSocketEvent('item_updated', (item: GroceryItem) => {
+        if (item.listId === sessionId ) {
+            loadItems(sessionId, effectiveGroupId);
+        }
+    });
 
     const pickImage = async (useCamera: boolean) => {
         const permissionResult = useCamera

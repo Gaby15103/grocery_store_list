@@ -17,10 +17,11 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { useGroups } from "@/context/groupContext";
 import { useLists } from "@/context/listContext";
-import { GroceryList } from "@/types/models";
+import {GroceryItem, GroceryList} from "@/types/models";
 import { useTheme } from "@/context/themeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/authContext";
+import {useSocketEvent} from "@/context/socketContext";
 
 export default function ListSelectionScreen() {
     const { groupId, refreshKey } = useLocalSearchParams<{ groupId: string; refreshKey: string }>();
@@ -47,6 +48,12 @@ export default function ListSelectionScreen() {
             }
         };
     }, [groupId, refreshKey]);
+
+    useSocketEvent('list_created', (list: GroceryList) => {
+        if (list.groupId === groupId ) {
+            lists.push(list);
+        }
+    });
 
     const handleAddManualEmail = () => {
         const email = manualEmail.trim().toLowerCase();
