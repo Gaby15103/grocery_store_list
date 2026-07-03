@@ -1,11 +1,11 @@
-const { DataTypes, Op} = require('sequelize');
+const {DataTypes, Op} = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    email: { type: DataTypes.STRING, unique: true, allowNull: false },
-    firstName: { type: DataTypes.STRING, allowNull: false },
-    lastName: { type: DataTypes.STRING, allowNull: false },
+    id: {type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true},
+    email: {type: DataTypes.STRING, unique: true, allowNull: false},
+    firstName: {type: DataTypes.STRING, allowNull: false},
+    lastName: {type: DataTypes.STRING, allowNull: false},
     passwordHash: DataTypes.STRING,
     authorizedDevices: {
         type: DataTypes.JSONB,
@@ -19,25 +19,25 @@ const User = sequelize.define('User', {
 });
 
 const Group = sequelize.define('Group', {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    name: { type: DataTypes.STRING, allowNull: false },
+    id: {type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true},
+    name: {type: DataTypes.STRING, allowNull: false},
     ownerId: DataTypes.UUID
 });
 
 const UserGroup = sequelize.define('UserGroup', {
-    role: { type: DataTypes.STRING, defaultValue: 'member' },
-    status: { type: DataTypes.STRING, defaultValue: 'pending' }
+    role: {type: DataTypes.STRING, defaultValue: 'member'},
+    status: {type: DataTypes.STRING, defaultValue: 'pending'}
 });
 
 const List = sequelize.define('List', {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    name: { type: DataTypes.STRING, allowNull: false },
-    isArchived: { type: DataTypes.BOOLEAN, defaultValue: false },
+    id: {type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true},
+    name: {type: DataTypes.STRING, allowNull: false},
+    isArchived: {type: DataTypes.BOOLEAN, defaultValue: false},
 });
 
 const Item = sequelize.define('Item', {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    name: { type: DataTypes.STRING, allowNull: false },
+    id: {type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true},
+    name: {type: DataTypes.STRING, allowNull: false},
     status: {
         type: DataTypes.ENUM('pending', 'bought', 'discarded'),
         defaultValue: 'pending'
@@ -52,30 +52,34 @@ const Item = sequelize.define('Item', {
     },
 });
 const Type = sequelize.define('Type', {
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    name: { type: DataTypes.STRING, allowNull: false, unique: true }
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {type: DataTypes.STRING, allowNull: false, unique: true}
 });
 const ItemType = sequelize.define('ItemType', {
-    type_id: { type: DataTypes.UUID, allowNull: false },
-    item_id: { type: DataTypes.UUID, allowNull: false },
+    type_id: {type: DataTypes.UUID, allowNull: false},
+    item_id: {type: DataTypes.UUID, allowNull: false},
 })
 
 
 // Relationships
-Group.hasMany(List, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
-List.belongsTo(Group, { foreignKey: 'GroupId' });
+Group.hasMany(List, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
+List.belongsTo(Group, {foreignKey: 'GroupId'});
 
-List.hasMany(Item, { onDelete: 'CASCADE', foreignKey: 'ListId' });
-Item.belongsTo(List, { foreignKey: 'ListId' });
+List.hasMany(Item, {onDelete: 'CASCADE', foreignKey: 'ListId'});
+Item.belongsTo(List, {foreignKey: 'ListId'});
 
-User.belongsToMany(Group, { through: UserGroup });
-Group.belongsToMany(User, { through: UserGroup, onDelete: 'CASCADE' });
+User.belongsToMany(Group, {through: UserGroup});
+Group.belongsToMany(User, {through: UserGroup, onDelete: 'CASCADE'});
 
 UserGroup.belongsTo(User);
-UserGroup.belongsTo(Group, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
-Group.hasMany(UserGroup, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
+UserGroup.belongsTo(Group, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
+Group.hasMany(UserGroup, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
 
-Type.hasMany(Item, { foreignKey: 'TypeId' });
-Item.belongsTo(Type, { foreignKey: 'TypeId' });
+Type.hasMany(Item, {foreignKey: 'TypeId'});
+Item.belongsTo(Type, {foreignKey: 'TypeId'});
 
-module.exports = { Group, List, Item, User, UserGroup, Type, sequelize, Op };
+module.exports = {Group, List, Item, User, UserGroup, Type, sequelize, Op};
