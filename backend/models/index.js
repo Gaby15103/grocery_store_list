@@ -51,7 +51,14 @@ const Item = sequelize.define('Item', {
         allowNull: true
     },
 });
-
+const Type = sequelize.define('Type', {
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    name: { type: DataTypes.STRING, allowNull: false, unique: true }
+});
+const ItemType = sequelize.define('ItemType', {
+    type_id: { type: DataTypes.UUID, allowNull: false },
+    item_id: { type: DataTypes.UUID, allowNull: false },
+})
 
 
 // Relationships
@@ -68,4 +75,7 @@ UserGroup.belongsTo(User);
 UserGroup.belongsTo(Group, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
 Group.hasMany(UserGroup, { onDelete: 'CASCADE', foreignKey: 'GroupId' });
 
-module.exports = { Group, List, Item, User, UserGroup, sequelize, Op };
+Type.hasMany(Item, { foreignKey: 'TypeId' });
+Item.belongsTo(Type, { foreignKey: 'TypeId' });
+
+module.exports = { Group, List, Item, User, UserGroup, Type, sequelize, Op };
