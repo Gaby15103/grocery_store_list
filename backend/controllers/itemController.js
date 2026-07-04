@@ -137,17 +137,21 @@ exports.updateItem = async (req, res) => {
         );
 
         if (updatedRows > 0 && groupId) {
-            const updatedItem = await Item.findByPk(id, {include: [Type]});
+            const updatedItem = await Item.findByPk(id, { include: [Type] });
 
-            req.io.to(groupId.toString()).emit('item_updated', {
-                id,
-                name,
-                listId,
-                status,
-                note,
-                imagePath,
-                Type: updatedItem.Type
-            });
+            if (updatedItem) {
+                const typeObject = updatedItem.Type || updatedItem.type || type;
+
+                req.io.to(groupId.toString()).emit('item_updated', {
+                    id,
+                    name,
+                    listId,
+                    status,
+                    note,
+                    imagePath,
+                    type: typeObject
+                });
+            }
 
             if (status === 'bought') {
                 await sendPushToGroup(groupId, senderEmail, {
@@ -160,6 +164,7 @@ exports.updateItem = async (req, res) => {
         }
         res.status(200).json({message: "Updated"});
     } catch (e) {
+        console.error("❌ Error in updateItem:", e);
         res.status(500).json({error: e.message});
     }
 };
