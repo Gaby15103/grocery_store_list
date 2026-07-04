@@ -23,10 +23,21 @@ import {useItems} from "@/context/itemContext";
 import {useGroups} from "@/context/groupContext";
 import {useLists} from "@/context/listContext";
 import {useTheme} from "@/context/themeContext";
-import {GroceryItem, GroceryList, ItemStatus} from "@/types/models";
+import {GroceryItem, GroceryList, ItemStatus, Type} from "@/types/models";
 import CustomAlert, {AlertButton} from "@/components/CustomAlert";
 import {CONFIG} from '@/config/constants';
 import {useSocketEvent} from "@/context/socketContext";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import CustomDropdown from "@/components/CustomDropdown";
+import {FilePayload} from "@/repositories/itemRepository";
 
 export default function GroceryListScreen() {
     const {sessionId, refreshKey} = useLocalSearchParams<{ sessionId: string, refreshKey: string }>();
@@ -39,13 +50,15 @@ export default function GroceryListScreen() {
         isInverse,
         currentSort,
         loadItems,
+        loadTypes,
         addItem,
         updateItemDetails,
         removeItem,
         toggleStatus,
         setSort,
         applySort,
-        setOpenedList
+        setOpenedList,
+        itemTypes
     } = useItems();
     const {activeGroupId, isCurrentGroupShared} = useGroups();
     const {archiveList, currentListId} = useLists();
@@ -55,12 +68,15 @@ export default function GroceryListScreen() {
     const [sortSheetVisible, setSortSheetVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
 
+
     const [itemName, setItemName] = useState('');
     const [itemNote, setItemNote] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
     const [selectedImageType, setSelectedImageType] = useState<string | null>(null);
     const [clearImage, setClearImage] = useState(false);
+    const [selectedType, setSelectedType] = useState<Type>(itemTypes[0])
+
 
     const [alertConfig, setAlertConfig] = useState<{
         visible: boolean;
@@ -92,6 +108,7 @@ export default function GroceryListScreen() {
         if (!sessionId) return;
         setOpenedList(sessionId);
         loadItems(sessionId, effectiveGroupId);
+        loadTypes();
 
         return () => {
             if (!sessionId) {
@@ -145,17 +162,17 @@ export default function GroceryListScreen() {
     // Save mutations
     const handleSaveNewItem = async () => {
         if (!itemName.trim() || !sessionId) return;
+        const imageFile = selectedImage
+            ? { uri: selectedImage, name: selectedImageName, type: selectedImageType }
+            : undefined;
         try {
             await addItem({
                 name: itemName.trim(),
                 listId: sessionId,
                 groupId: effectiveGroupId,
                 note: itemNote.trim(),
-                imageFile: {
-                    uri: selectedImage,
-                    name: selectedImageName,
-                    type: selectedImageType
-                },
+                imageFile: imageFile,
+                typeId: selectedType.id
             });
             closeAddModal();
         } catch (e) {
@@ -165,18 +182,18 @@ export default function GroceryListScreen() {
 
     const handleUpdateItem = async () => {
         if (!selectedItem || !itemName.trim()) return;
+        const imageFile = selectedImage
+            ? { uri: selectedImage, name: selectedImageName, type: selectedImageType }
+            : undefined;
         try {
             await updateItemDetails({
                 item: selectedItem,
                 newName: itemName.trim(),
                 newNote: itemNote.trim(),
-                newImageFile: {
-                    uri: selectedImage,
-                    name: selectedImageName,
-                    type: selectedImageType
-                },
+                newImageFile: imageFile,
                 shouldClearImage: clearImage,
                 groupId: effectiveGroupId,
+                typeId: selectedType.id
             });
             closeEditModal();
         } catch (e) {
@@ -232,6 +249,7 @@ export default function GroceryListScreen() {
         setItemNote('');
         setSelectedImage(null);
         setClearImage(false);
+        setSelectedType(itemTypes[0]);
         setAddModalVisible(true);
     };
 
@@ -240,6 +258,7 @@ export default function GroceryListScreen() {
         setItemNote('');
         setSelectedImage(null);
         setClearImage(false);
+        setSelectedType(itemTypes[0]);
         setAddModalVisible(false);
     };
 
@@ -249,6 +268,7 @@ export default function GroceryListScreen() {
         setItemNote(item.note || '');
         setSelectedImage(item.imagePath || null);
         setClearImage(false);
+        setSelectedType(item.type);
         setEditModalVisible(true);
     };
 
@@ -258,6 +278,7 @@ export default function GroceryListScreen() {
         setItemNote('');
         setSelectedImage(null);
         setClearImage(false);
+        setSelectedType(null);
         setEditModalVisible(false);
     };
 
@@ -365,6 +386,7 @@ export default function GroceryListScreen() {
                         <View style={[styles.separator, {backgroundColor: colors.border, marginVertical: 8}]}/>
 
                         {([
+                            {type: 'byType', icon: "text-outline", label: "Par Type"},
                             {type: 'alphabetical', icon: "text-outline", label: "alphabétique"},
                             {type: 'created', icon: "calendar-outline", label: "Date de création"},
                             {type: 'hasNote', icon: "document-text-outline", label: "Articles avec notes"},
@@ -396,96 +418,106 @@ export default function GroceryListScreen() {
                 transparent
                 onRequestClose={addModalVisible ? closeAddModal : closeEditModal}
             >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={addModalVisible ? closeAddModal : closeEditModal}
-                >
-                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            style={{width: '100%', alignItems: 'center'}}
-                        >
-                            <TouchableOpacity activeOpacity={1} style={[styles.dialogCard, {
-                                backgroundColor: colors.card,
-                                borderColor: colors.border
-                            }]}>
-                                <Text style={[styles.dialogTitle, {color: colors.text}]}>
-                                    {addModalVisible ? "Ajouter à la liste" : "Modifier l'élément"}
-                                </Text>
-
-                                <TextInput
-                                    style={[styles.input, {
-                                        color: colors.text,
-                                        borderColor: colors.border,
-                                        backgroundColor: colors.background
-                                    }]}
-                                    placeholder="Nom de l'article..."
-                                    placeholderTextColor={colors.subtext}
-                                    value={itemName}
-                                    onChangeText={setItemName}
-                                    autoFocus
-                                />
-                                <TextInput
-                                    style={[styles.input, {
-                                        color: colors.text,
-                                        borderColor: colors.border,
-                                        backgroundColor: colors.background
-                                    }]}
-                                    placeholder="Note..."
-                                    placeholderTextColor={colors.subtext}
-                                    value={itemNote}
-                                    onChangeText={setItemNote}
-                                />
-
-                                {selectedImage && !clearImage && (
-                                    <View style={[styles.imagePreviewContainer, {borderColor: colors.border}]}>
-                                        <Image source={{uri: selectedImage}} style={styles.dialogImage}
-                                               resizeMode="cover"/>
-                                        <TouchableOpacity style={styles.clearImageBtn}
-                                                          onPress={() => setClearImage(true)}>
-                                            <Ionicons name="close-circle" size={26} color="#ef4444"/>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                <View style={styles.mediaActions}>
-                                    <TouchableOpacity onPress={() => pickImage(true)} style={[styles.mediaBtn, {
-                                        backgroundColor: colors.background,
-                                        borderColor: colors.border
-                                    }]}>
-                                        <Ionicons name="camera" size={24} color={colors.primary}/>
-                                        <Text style={[styles.mediaBtnText, {color: colors.text}]}>Camera</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => pickImage(false)} style={[styles.mediaBtn, {
-                                        backgroundColor: colors.background,
-                                        borderColor: colors.border
-                                    }]}>
-                                        <Ionicons name="images" size={24} color={colors.primary}/>
-                                        <Text style={[styles.mediaBtnText, {color: colors.text}]}>Gallery</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                <View style={styles.dialogActions}>
-                                    <TouchableOpacity
-                                        onPress={addModalVisible ? closeAddModal : closeEditModal}
-                                        style={[styles.actionBtn, {borderColor: colors.border}]}
-                                    >
-                                        <Text style={{color: colors.subtext, fontWeight: '600'}}>Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={addModalVisible ? handleSaveNewItem : handleUpdateItem}
-                                        style={[styles.actionBtn, styles.primaryActionBtn, {backgroundColor: colors.primary}]}
-                                    >
-                                        <Text style={{color: '#fff', fontWeight: 'bold'}}>
-                                            {addModalVisible ? "Ajouter" : "Sauvegarder"}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </TouchableOpacity>
-                        </KeyboardAvoidingView>
+                <View style={styles.modalOverlay}>
+                    <TouchableWithoutFeedback onPress={addModalVisible ? closeAddModal : closeEditModal}>
+                        <View style={StyleSheet.absoluteFill} />
                     </TouchableWithoutFeedback>
-                </TouchableOpacity>
+
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={{width: '100%', alignItems: 'center'}}
+                    >
+                        <TouchableOpacity activeOpacity={1} style={[styles.dialogCard, {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border
+                        }]}>
+                            <Text style={[styles.dialogTitle, {color: colors.text}]}>
+                                {addModalVisible ? "Ajouter à la liste" : "Modifier l'élément"}
+                            </Text>
+
+                            <TextInput
+                                style={[styles.input, {
+                                    color: colors.text,
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.inputBg
+                                }]}
+                                placeholder="Nom de l'article..."
+                                placeholderTextColor={colors.subtext}
+                                value={itemName}
+                                onChangeText={setItemName}
+                                autoFocus
+                            />
+                            <TextInput
+                                style={[styles.input, {
+                                    color: colors.text,
+                                    borderColor: colors.inputBorder,
+                                    backgroundColor: colors.inputBg
+                                }]}
+                                placeholder="Note..."
+                                placeholderTextColor={colors.subtext}
+                                value={itemNote}
+                                onChangeText={setItemNote}
+                            />
+
+                            {selectedImage && !clearImage && (
+                                <View style={[styles.imagePreviewContainer, {borderColor: colors.inputBorder}]}>
+                                    <Image source={{uri: selectedImage}} style={styles.dialogImage}
+                                           resizeMode="cover"/>
+                                    <TouchableOpacity style={styles.clearImageBtn}
+                                                      onPress={() => setClearImage(true)}>
+                                        <Ionicons name="close-circle" size={26} color="#ef4444"/>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            <View style={{ zIndex: 5000, position: 'relative' }}>
+                                <CustomDropdown
+                                    data={itemTypes}
+                                    defaultValue={selectedType}
+                                    getLabel={(item) => item.name}
+                                    getValue={(item) => item.id}
+                                    onSelect={(item) => setSelectedType(item)}
+                                    colors={colors}
+                                />
+                            </View>
+
+
+                            <View style={styles.mediaActions}>
+                                <TouchableOpacity onPress={() => pickImage(true)} style={[styles.mediaBtn, {
+                                    backgroundColor: colors.inputBg,
+                                    borderColor: colors.inputBorder
+                                }]}>
+                                    <Ionicons name="camera" size={24} color={colors.primary}/>
+                                    <Text style={[styles.mediaBtnText, {color: colors.text}]}>Camera</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => pickImage(false)} style={[styles.mediaBtn, {
+                                    backgroundColor: colors.inputBg,
+                                    borderColor: colors.inputBorder
+                                }]}>
+                                    <Ionicons name="images" size={24} color={colors.primary}/>
+                                    <Text style={[styles.mediaBtnText, {color: colors.text}]}>Gallery</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.dialogActions}>
+                                <TouchableOpacity
+                                    onPress={addModalVisible ? closeAddModal : closeEditModal}
+                                    style={[styles.actionBtn, {borderColor: colors.inputBorder}]}
+                                >
+                                    <Text style={{color: colors.subtext, fontWeight: '600'}}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={addModalVisible ? handleSaveNewItem : handleUpdateItem}
+                                    style={[styles.actionBtn, styles.primaryActionBtn, {backgroundColor: colors.primary}]}
+                                >
+                                    <Text style={{color: '#fff', fontWeight: 'bold'}}>
+                                        {addModalVisible ? "Ajouter" : "Sauvegarder"}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableOpacity>
+                    </KeyboardAvoidingView>
+                </View>
+
             </Modal>
 
             <CustomAlert
@@ -700,7 +732,8 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.15,
-        shadowRadius: 6
+        shadowRadius: 6,
+        overflow: 'visible'
     },
     dialogTitle: {fontSize: 20, fontWeight: '700', marginBottom: 20},
     input: {

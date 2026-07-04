@@ -98,10 +98,11 @@ export interface GroceryItem {
     modifiedBy?: string;
     note?: string;
     imagePath?: string;
-    type: Type
+    TypeId: number
+    type?: Type | null;
 }
 export interface Type {
-    id?: string;
+    id?: number;
     name: string;
 }
 export const GroceryItemModel = {
@@ -118,7 +119,7 @@ export const GroceryItemModel = {
             imagePath: json?.imagePath,
             addedBy: json?.addedBy,
             modifiedBy: json?.modifiedBy,
-            type: json?.type,
+            TypeId: json?.TypeId,
         };
     },
 
@@ -132,7 +133,7 @@ export const GroceryItemModel = {
             groupId: item.groupId,
             note: item.note,
             imagePath: item.imagePath,
-            type: item.type,
+            TypeId: item.TypeId,
         };
     }
 };

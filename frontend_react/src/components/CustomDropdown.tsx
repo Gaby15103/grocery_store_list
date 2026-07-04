@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {View, Text, TouchableOpacity, FlatList, StyleSheet, ScrollView} from 'react-native';
 
-// 1. Extend props to accept your dynamic colors object
 interface CustomDropdownProps<T> {
     data: T[];
+    defaultValue?: T | null;
     placeholder?: string;
     onSelect: (item: T) => void;
     getLabel: (item: T) => string;
@@ -23,6 +23,7 @@ interface CustomDropdownProps<T> {
 
 function CustomDropdown<T>({
                                data,
+                               defaultValue = null,
                                placeholder = 'Select an option',
                                onSelect,
                                getLabel,
@@ -31,7 +32,12 @@ function CustomDropdown<T>({
                                colors,
                            }: CustomDropdownProps<T>) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<T | null>(null);
+    const [selectedItem, setSelectedItem] = useState<T | null>(defaultValue);
+
+    // Sync state if defaultValue changes upstream
+    useEffect(() => {
+        setSelectedItem(defaultValue);
+    }, [defaultValue]);
 
     const toggleDropdown = () => setIsOpen(!isOpen);
 
@@ -43,11 +49,11 @@ function CustomDropdown<T>({
 
     return (
         <View style={styles.container}>
-            {/* Dropdown Button Trigger with Theme Colors */}
+            {/* Dropdown Button Trigger */}
             <TouchableOpacity
                 style={[
                     styles.triggerButton,
-                    { backgroundColor: colors.inputBg, borderColor: colors.border }
+                    { backgroundColor: colors.inputBg, borderColor: colors.border, marginBottom: 10 }
                 ]}
                 onPress={toggleDropdown}
             >
@@ -59,10 +65,14 @@ function CustomDropdown<T>({
                 </Text>
             </TouchableOpacity>
 
-            {/* Floating Options List Overlay with Theme Colors */}
+            {/* Floating Options List Overlay */}
             {isOpen && (
                 <View style={[styles.dropdownOverlay, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                    <ScrollView
+                        nestedScrollEnabled={true}
+                        keyboardShouldPersistTaps="handled"
+                        style={{ maxHeight: 285 }}
+                    >
                         {data.map((item) => (
                             <TouchableOpacity
                                 key={getValue(item).toString()}
@@ -88,7 +98,8 @@ function CustomDropdown<T>({
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        zIndex: 1000,
+        zIndex: 5000,
+        position: 'relative',
     },
     triggerButton: {
         flexDirection: 'row',
@@ -107,13 +118,13 @@ const styles = StyleSheet.create({
     },
     dropdownOverlay: {
         position: 'absolute',
-        top: '110%',
+        top: '100%', // Sits directly below the trigger button
         left: 0,
         right: 0,
         borderWidth: 1,
         borderRadius: 8,
-        maxHeight: 200,
-        elevation: 5,
+        maxHeight: 285,
+        elevation: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,

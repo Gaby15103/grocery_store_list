@@ -1,12 +1,13 @@
 import React, {createContext, useContext, useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {itemRepository, FilePayload} from '@/repositories/itemRepository';
-import {GroceryItem, ItemStatus, GroceryItemModel} from '@/types/models';
+import {GroceryItem, ItemStatus, GroceryItemModel, Type} from '@/types/models';
 
-export type ItemSortType = 'alphabetical' | 'created' | 'status' | 'hasNote' | 'hasImage';
+export type ItemSortType = 'alphabetical' | 'created' | 'status' | 'byType' | 'hasNote' | 'hasImage';
 
 interface ItemContextType {
     currentItems: GroceryItem[];
+    itemTypes: Type[];
     isLoading: boolean;
     errorMessage: string | null;
     currentListId: string | null;
@@ -16,12 +17,14 @@ interface ItemContextType {
     applySort: () => Promise<void>
     setSort: (type: ItemSortType, inverse?: boolean) => Promise<void>;
     loadItems: (listId: string, groupId: string) => Promise<void>;
+    loadTypes: () => Promise<void>;
     addItem: (params: {
         name: string;
         listId: string;
         groupId: string;
         note?: string;
-        imageFile?: FilePayload
+        imageFile?: FilePayload;
+        typeId: number;
     }) => Promise<void>;
     toggleStatus: (item: GroceryItem, groupId: string, forceStatus?: ItemStatus) => Promise<void>;
     removeItem: (item: GroceryItem, groupId: string) => Promise<void>;
@@ -31,7 +34,8 @@ interface ItemContextType {
         newNote?: string;
         newImageFile?: FilePayload;
         shouldClearImage?: boolean;
-        groupId?: string
+        groupId?: string;
+        typeId: number;
     }) => Promise<void>;
     syncFromSocket: (eventType: string, data: any) => void;
 }
@@ -40,6 +44,7 @@ const ItemContext = createContext<ItemContextType | undefined>(undefined);
 
 export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [currentItems, setCurrentItems] = useState<GroceryItem[]>([]);
+    const [types, setTypes] = useState<Type[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [currentListId, setCurrentListId] = useState<string | null>(null);
@@ -51,7 +56,17 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
         console.log(`📍 UI State: User is now viewing list: ${listId}`);
     };
 
+    const loadTypes = async () => {
+        try {
+            const fetchedTypes = await itemRepository.getTypes();
+            setTypes(fetchedTypes);
+        } catch (e) {
+            console.error("Failed to fetch item types", e);
+        }
+    };
+
     const _sortItems = (items: GroceryItem[], sortType: ItemSortType, inverse: boolean): GroceryItem[] => {
+        console.log(items);
         return [...items].sort((a, b) => {
             let cmp = 0;
             switch (sortType) {
@@ -60,8 +75,15 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
                     break;
                 case 'status': {
                     // Sort weights: pending (1) first, then bought (2), then discarded (3)
-                    const statusOrder: Record<string, number> = { pending: 1, bought: 2, discarded: 3 };
+                    const statusOrder: Record<string, number> = {pending: 1, bought: 2, discarded: 3};
                     cmp = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+                    break;
+                }
+                case 'byType': {
+                    const idA = a.type?.id ?? 0;
+                    const idB = b.type?.id ?? 0;
+
+                    cmp = idA - idB;
                     break;
                 }
                 case 'hasNote':
@@ -81,7 +103,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
             return inverse ? -cmp : cmp;
         });
     };
-    const applySort = async ()=> {
+    const applySort = async () => {
         setCurrentItems(prev => _sortItems(prev, currentSort, isInverse));
     }
 
@@ -160,12 +182,14 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
                                groupId,
                                note,
                                imageFile,
+                               typeId
                            }: {
         name: string;
         listId: string;
         groupId: string;
         note?: string;
         imageFile?: FilePayload;
+        typeId: number;
     }) => {
         const tempItem: GroceryItem = {
             name,
@@ -174,13 +198,14 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
             status: 'pending',
             createdAt: new Date(),
             note,
+            TypeId: typeId
         };
 
         // UI Updates instantly
         setCurrentItems(prev => [tempItem, ...prev]);
 
         try {
-            await itemRepository.addItemToList({name, listId, groupId, note, imageFile});
+            await itemRepository.addItemToList({name, listId, groupId, note, imageFile, typeId});
             await loadItems(listId, groupId);
         } catch (error: any) {
             if (error.message?.includes("queued") || error.message?.includes("Offline")) {
@@ -261,6 +286,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
                                          newImageFile,
                                          shouldClearImage = false,
                                          groupId,
+                                         typeId,
                                      }: {
         item: GroceryItem;
         newName: string;
@@ -268,6 +294,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
         newImageFile?: FilePayload;
         shouldClearImage?: boolean;
         groupId?: string;
+        typeId: number;
     }) => {
         setIsLoading(true);
         try {
@@ -278,6 +305,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 newImageFile,
                 shouldClearImage,
                 groupId: groupId ?? 'default',
+                typeId: typeId
             });
             await loadItems(item.listId, groupId ?? 'default');
         } catch (e: any) {
@@ -291,6 +319,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
         <ItemContext.Provider
             value={{
                 currentItems,
+                itemTypes: types,
                 isLoading,
                 errorMessage,
                 currentListId,
@@ -300,6 +329,7 @@ export const ItemProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 setOpenedList,
                 setSort,
                 loadItems,
+                loadTypes,
                 addItem,
                 toggleStatus,
                 removeItem,

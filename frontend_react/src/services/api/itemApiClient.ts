@@ -1,5 +1,5 @@
 import { BaseApi } from './baseApi';
-import {GroceryItem} from "@/types/models";
+import {GroceryItem, Type} from "@/types/models";
 import {Platform} from "react-native";
 
 export interface UploadFilePayload {
@@ -16,8 +16,8 @@ class ItemApiClient extends BaseApi {
             path: `/lists/${listId}/items`,
         });
     }
-    async fetchItemTypes(): Promise<GroceryItem[]> {
-        return this.request<GroceryItem[]>({
+    async fetchItemTypes(): Promise<Type[]> {
+        return this.request<Type[]>({
             method:'GET',
             path: '/items/type'
         })
@@ -27,7 +27,16 @@ class ItemApiClient extends BaseApi {
         return this.request<GroceryItem>({
             method: 'POST',
             path: '/items',
-            body: item,
+            body: {
+                createdAt: item.createdAt,
+                status: item.status,
+                name: item.name,
+                listId: item.listId,
+                groupId: item.groupId,
+                note: item.note,
+                imagePath: item.imagePath,
+                TypeId: item.TypeId,
+            },
         });
     }
 

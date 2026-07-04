@@ -1,7 +1,7 @@
 import {groupRepository} from './groupRepository';
 import {groupApiClient} from "@/services/api/groupApiClient";
 import {itemApiClient} from "@/services/api/itemApiClient";
-import {GroceryItem, ItemStatus} from "@/types/models";
+import {GroceryItem, ItemStatus, Type} from "@/types/models";
 
 // Interface defining the cross-platform React Native file references
 export interface FilePayload {
@@ -39,6 +39,12 @@ class ItemRepository {
     async getItems(listId: string, groupId: string): Promise<GroceryItem[]> {
         return await itemApiClient.fetchItems(listId);
     }
+    /**
+     * GET: Type List
+     */
+    async getTypes(): Promise<Type[]> {
+        return await itemApiClient.fetchItemTypes();
+    }
 
     /**
      * POST: Creates item on server and gets the Real ID
@@ -49,16 +55,19 @@ class ItemRepository {
                             groupId,
                             note,
                             imageFile,
+                            typeId
                         }: {
         name: string;
         listId: string;
         groupId: string;
         note?: string;
         imageFile?: FilePayload;
+        typeId: number;
     }): Promise<void> {
         if (!(await this._isShared(groupId))) return;
 
         let finalImagePath: string | undefined;
+        console.log('image file', JSON.stringify(imageFile));
         if (imageFile) {
             const uploadedPath = await itemApiClient.uploadImage(imageFile as any);
             if (uploadedPath) finalImagePath = uploadedPath;
@@ -70,7 +79,8 @@ class ItemRepository {
             name,
             listId,
             groupId,
-            note
+            note,
+            TypeId: typeId
         };
 
         const serverItem = await itemApiClient.addItem(newItem);
@@ -93,6 +103,7 @@ class ItemRepository {
                                 newImageFile,
                                 shouldClearImage = false,
                                 groupId,
+                                typeId
                             }: {
         item: GroceryItem;
         newName: string;
@@ -100,9 +111,11 @@ class ItemRepository {
         newImageFile?: FilePayload;
         shouldClearImage?: boolean;
         groupId: string;
+        typeId: number;
     }): Promise<void> {
         item.name = newName;
         item.note = newNote;
+        item.TypeId = typeId;
 
         if (!(await this._isShared(groupId))) {
             if (shouldClearImage) {
