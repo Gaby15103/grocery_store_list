@@ -76,13 +76,11 @@ exports.getListItems = async (req, res) => {
 };
 
 exports.createItem = async (req, res) => {
-    const {name, status, listId, groupId, note, imagePath, type} = req.body;
+    const {name, status, listId, groupId, note, imagePath, TypeId} = req.body;
     const senderEmail = req.headers['x-user-email'];
 
     try {
-        const actualTypeId = type ? type.id : null;
-
-        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: actualTypeId});
+        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: TypeId});
 
         item = await Item.findByPk(item.id, {include: [Type]});
 
@@ -126,32 +124,26 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const {id, name, listId, status, groupId, note, imagePath, type} = req.body;
+    const {id, name, listId, status, groupId, note, imagePath, TypeId} = req.body;
     const senderEmail = req.headers['x-user-email'];
     try {
-        const actualTypeId = type ? type.id : null;
-
         const [updatedRows] = await Item.update(
-            {name, status, note, imagePath, TypeId: actualTypeId},
+            {name, status, note, imagePath, TypeId: TypeId},
             {where: {id}}
         );
 
         if (updatedRows > 0 && groupId) {
-            const updatedItem = await Item.findByPk(id, { include: [Type] });
+            const updatedItem = await Item.findByPk(id, {include: [Type]});
 
-            if (updatedItem) {
-                const typeObject = updatedItem.Type || updatedItem.type || type;
-
-                req.io.to(groupId.toString()).emit('item_updated', {
-                    id,
-                    name,
-                    listId,
-                    status,
-                    note,
-                    imagePath,
-                    type: typeObject
-                });
-            }
+            req.io.to(groupId.toString()).emit('item_updated', {
+                id,
+                name,
+                listId,
+                status,
+                note,
+                imagePath,
+                Type: updatedItem.Type
+            });
 
             if (status === 'bought') {
                 await sendPushToGroup(groupId, senderEmail, {
@@ -164,7 +156,6 @@ exports.updateItem = async (req, res) => {
         }
         res.status(200).json({message: "Updated"});
     } catch (e) {
-        console.error("❌ Error in updateItem:", e);
         res.status(500).json({error: e.message});
     }
 };
