@@ -16,6 +16,12 @@ class ItemApiClient extends BaseApi {
             path: `/lists/${listId}/items`,
         });
     }
+    async fetchItemTypes(): Promise<GroceryItem[]> {
+        return this.request<GroceryItem[]>({
+            method:'GET',
+            path: '/items/type'
+        })
+    }
 
     async addItem(item: GroceryItem): Promise<GroceryItem> {
         return this.request<GroceryItem>({

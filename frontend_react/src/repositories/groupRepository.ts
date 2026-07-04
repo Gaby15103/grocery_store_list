@@ -46,13 +46,14 @@ class GroupRepository {
     /**
      * 3. Create Group
      */
-    async createGroup(name: string): Promise<void> {
+    async createGroup(name: string): Promise<string> {
         const serverGroup = await groupApiClient.createGroup(name);
         if (serverGroup) {
             const cached = await this.getCachedGroups();
             cached.push(serverGroup);
             await AsyncStorage.setItem(this.GROUPS_KEY, JSON.stringify(cached));
         }
+        return serverGroup.id
     }
 
     /**

@@ -12,7 +12,7 @@ interface GroupContextType {
     changeActiveGroup: (id: string) => Promise<void>;
     makeGroupPublic: (id: string) => Promise<void>;
     handleShareAction: (group: GroceryGroup) => void;
-    createGroup: (name: string) => Promise<void>;
+    createGroup: (name: string) => Promise<string>;
     deleteGroup: (id: string) => Promise<void>;
 }
 
@@ -92,12 +92,14 @@ export const GroupProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const createGroup = async (name: string) => {
         setIsLoading(true);
+        let group_id = '';
         try {
-            await groupRepository.createGroup(name);
+            group_id = await groupRepository.createGroup(name);
             await loadGroups();
         } finally {
             setIsLoading(false);
         }
+        return group_id;
     };
 
     const deleteGroup = async (id: string) => {

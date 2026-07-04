@@ -101,7 +101,7 @@ export default function GroceryListScreen() {
     }, [sessionId, effectiveGroupId, refreshKey]);
 
     useSocketEvent('item_added', (item: GroceryItem) => {
-        if (item.listId === sessionId ) {
+        if (item.listId === sessionId) {
             loadItems(sessionId, effectiveGroupId);
         }
     });
@@ -112,7 +112,7 @@ export default function GroceryListScreen() {
         }
     });
     useSocketEvent('item_updated', (item: GroceryItem) => {
-        if (item.listId === sessionId ) {
+        if (item.listId === sessionId) {
             loadItems(sessionId, effectiveGroupId);
         }
     });
@@ -124,9 +124,9 @@ export default function GroceryListScreen() {
 
         if (!permissionResult.granted) {
             triggerAlert(
-                "Permission Denied",
-                "Camera or gallery access is required to attach images.",
-                [{text: 'Ok', style: 'cancel', onPress: closeAlert}]);
+                "Accès refusé",
+                "L'accès à l'appareil photo ou à la galerie est requis pour joindre des images.",
+                [{text: 'Ok', style: 'Annuler', onPress: closeAlert}]);
             return;
         }
 
@@ -319,8 +319,8 @@ export default function GroceryListScreen() {
                 keyExtractor={(item) => item.id?.toString() || `${item.name}-${item.createdAt}`}
                 ItemSeparatorComponent={() => <View style={[styles.separator, {backgroundColor: colors.border}]}/>}
                 ListEmptyComponent={() => !isLoading ? (
-                    <View style={styles.center}><Text style={{color: colors.subtext}}>No items in this
-                        list</Text></View>
+                    <View style={styles.center}><Text style={{color: colors.subtext}}>Aucun élément dans cette liste
+                        liste</Text></View>
                 ) : null}
                 renderItem={({item}) => {
                     const isDiscarded = item.status === 'discarded';
@@ -356,7 +356,7 @@ export default function GroceryListScreen() {
                                   onPress={() => setSortSheetVisible(false)}>
                     <View style={[styles.bottomSheet, {backgroundColor: colors.card}]}>
                         <View style={styles.sheetRow}>
-                            <Text style={{color: colors.text, fontSize: 16}}>Inverse Order</Text>
+                            <Text style={{color: colors.text, fontSize: 16}}>Ordre inverse</Text>
                             <TouchableOpacity onPress={() => setSort(currentSort, !isInverse)}>
                                 <Ionicons name={isInverse ? "checkbox" : "square-outline"} size={24}
                                           color={colors.primary}/>
@@ -365,10 +365,10 @@ export default function GroceryListScreen() {
                         <View style={[styles.separator, {backgroundColor: colors.border, marginVertical: 8}]}/>
 
                         {([
-                            {type: 'alphabetical', icon: "text-outline", label: "Alphabetical"},
-                            {type: 'created', icon: "calendar-outline", label: "Date Created"},
-                            {type: 'hasNote', icon: "document-text-outline", label: "Items with Notes"},
-                            {type: 'hasImage', icon: "image-outline", label: "Items with Images"}
+                            {type: 'alphabetical', icon: "text-outline", label: "alphabétique"},
+                            {type: 'created', icon: "calendar-outline", label: "Date de création"},
+                            {type: 'hasNote', icon: "document-text-outline", label: "Articles avec notes"},
+                            {type: 'hasImage', icon: "image-outline", label: "Articles avec images"}
                         ] as const).map((sortOpt) => (
                             <TouchableOpacity
                                 key={sortOpt.type}
@@ -411,7 +411,7 @@ export default function GroceryListScreen() {
                                 borderColor: colors.border
                             }]}>
                                 <Text style={[styles.dialogTitle, {color: colors.text}]}>
-                                    {addModalVisible ? "Add to List" : "Edit Item"}
+                                    {addModalVisible ? "Ajouter à la liste" : "Modifier l'élément"}
                                 </Text>
 
                                 <TextInput
@@ -420,7 +420,7 @@ export default function GroceryListScreen() {
                                         borderColor: colors.border,
                                         backgroundColor: colors.background
                                     }]}
-                                    placeholder="Item name..."
+                                    placeholder="Nom de l'article..."
                                     placeholderTextColor={colors.subtext}
                                     value={itemName}
                                     onChangeText={setItemName}
@@ -478,7 +478,7 @@ export default function GroceryListScreen() {
                                         style={[styles.actionBtn, styles.primaryActionBtn, {backgroundColor: colors.primary}]}
                                     >
                                         <Text style={{color: '#fff', fontWeight: 'bold'}}>
-                                            {addModalVisible ? "Add" : "Save"}
+                                            {addModalVisible ? "Ajouter" : "Sauvegarder"}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
@@ -620,7 +620,7 @@ function ItemRow({
                             }}
                         >
                             <Ionicons name="create-outline" size={22} color={colors.text}/>
-                            <Text style={[styles.sheetOptionText, {color: colors.text}]}>Edit Details</Text>
+                            <Text style={[styles.sheetOptionText, {color: colors.text}]}>Modifier les détails</Text>
                         </TouchableOpacity>
 
                         <View style={[styles.separator, {backgroundColor: colors.border, marginVertical: 6}]}/>
@@ -633,7 +633,8 @@ function ItemRow({
                             }}
                         >
                             <Ionicons name="trash-outline" size={22} color="#ef4444"/>
-                            <Text style={[styles.sheetOptionText, {color: '#ef4444', fontWeight: '600'}]}>Delete</Text>
+                            <Text
+                                style={[styles.sheetOptionText, {color: '#ef4444', fontWeight: '600'}]}>Supprimer</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>

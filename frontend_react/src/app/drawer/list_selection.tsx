@@ -11,7 +11,7 @@ import {
     Platform,
     Alert,
     KeyboardAvoidingView,
-    ScrollView
+    ScrollView, TouchableWithoutFeedback, Keyboard, Image
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
@@ -25,9 +25,9 @@ import {useSocketEvent} from "@/context/socketContext";
 
 export default function ListSelectionScreen() {
     const { groupId, refreshKey } = useLocalSearchParams<{ groupId: string; refreshKey: string }>();
-    const { groups } = useGroups();
+    const { groups, isCurrentGroupShared } = useGroups();
     const { recentContacts, sendInvitation, refreshSocialData } = useAuth();
-    const { loadLists, lists } = useLists();
+    const { loadLists, lists, createList } = useLists();
     const { colors } = useTheme();
 
     const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
@@ -36,6 +36,18 @@ export default function ListSelectionScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [invitationVisible, setInvitationVisible] = useState(false);
     const lastLoadedGroupId = useRef<string | null>(null);
+
+    const [newListVisible, setNewListVisible] = useState(false);
+    const date = new Date();
+    const formattedDate = new Intl.DateTimeFormat('fr-CA', {
+        year: '2-digit',
+        month: 'numeric',
+        day: 'numeric'
+    }).format(date);
+    const [newListName, setNewListName] = useState(`Liste du ${formattedDate}`);
+    const [isCreatingList, setIsCreatingList] = useState(false);
+
+
 
     useEffect(() => {
         if (groupId) {
@@ -54,6 +66,26 @@ export default function ListSelectionScreen() {
             lists.push(list);
         }
     });
+
+    const handleCreateList = async () => {
+        if (!newListName.trim() || !groupId) return;
+
+        setIsCreatingList(true);
+        try {
+            await createList(newListName.trim(), groupId, isCurrentGroupShared);
+            setNewListName('');
+            setNewListVisible(false);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            if (Platform.OS === 'web') {
+                window.alert(`Failed to create list: ${msg}`);
+            } else {
+                Alert.alert("Error", `Failed to create list: ${msg}`);
+            }
+        } finally {
+            setIsCreatingList(false);
+        }
+    };
 
     const handleAddManualEmail = () => {
         const email = manualEmail.trim().toLowerCase();
@@ -171,7 +203,84 @@ export default function ListSelectionScreen() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
             />
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: colors.primary }]}
+                onPress={() => setNewListVisible(true)}
+                activeOpacity={0.8}
+            >
+                <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
+            <Modal
+                transparent
+                visible={newListVisible}
+                animationType="fade"
+                onRequestClose={() => setNewListVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlayCenter}
+                    activeOpacity={1}
+                    onPress={() => setNewListVisible(false)}
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            style={{width: '100%', alignItems: 'center'}}
+                        >
+                            <TouchableOpacity activeOpacity={1} style={[styles.dialogCard, {
+                                backgroundColor: colors.card,
+                                borderColor: colors.border
+                            }]}>
+                                <View style={[styles.bottomSheet, { backgroundColor: colors.card, height: 'auto', minHeight: 280, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }]}>
+                                    <View style={styles.sheetHeader}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.sheetTitle, { color: colors.text }]}>Créer une liste</Text>
+                                            <Text style={[styles.sheetSubtitle, { color: colors.subtext }]}>Dans {currentGroupName}</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => setNewListVisible(false)}
+                                            style={[styles.closeIconButton, { backgroundColor: colors.inputBg }]}
+                                        >
+                                            <Ionicons name="close" size={20} color={colors.text} />
+                                        </TouchableOpacity>
+                                    </View>
 
+                                    <View style={[styles.separator, { backgroundColor: colors.border }]} />
+
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Nom de la liste</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                                            placeholder="Ex: Épicerie de la semaine..."
+                                            placeholderTextColor={colors.subtext}
+                                            value={newListName}
+                                            onChangeText={setNewListName}
+                                            autoFocus={newListVisible}
+                                        />
+                                    </View>
+
+                                    <View style={[styles.actionRow, {paddingBottom: 20}]}>
+                                        <TouchableOpacity
+                                            onPress={handleCreateList}
+                                            disabled={!newListName.trim() || isCreatingList}
+                                            style={[
+                                                styles.btn,
+                                                { backgroundColor: colors.primary || "#007AFF" },
+                                                (!newListName.trim() || isCreatingList) && { backgroundColor: colors.border }
+                                            ]}
+                                        >
+                                            {isCreatingList ? (
+                                                <ActivityIndicator color="white" size="small" />
+                                            ) : (
+                                                <Text style={styles.btnConfirmText}>Confirmer</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        </KeyboardAvoidingView>
+                    </TouchableWithoutFeedback>
+                </TouchableOpacity>
+            </Modal>
             {/* Repositioned & Refined Invitation Bottom Sheet */}
             <Modal
                 transparent
@@ -196,7 +305,7 @@ export default function ListSelectionScreen() {
 
                         <View style={styles.sheetHeader}>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.sheetTitle, { color: colors.text }]}>Invite by Email</Text>
+                                <Text style={[styles.sheetTitle, { color: colors.text }]}>Invitation par courriel</Text>
                                 <Text style={[styles.sheetSubtitle, { color: colors.subtext }]}>{currentGroupName}</Text>
                             </View>
                             <TouchableOpacity
@@ -214,10 +323,10 @@ export default function ListSelectionScreen() {
                             contentContainerStyle={{ paddingBottom: 16 }}
                         >
                             {/* Manual Email Input */}
-                            <View style={styles.row}>
+                            <View style={[styles.row, { alignItems: 'center' }]}>
                                 <TextInput
                                     style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                                    placeholder="Enter email address..."
+                                    placeholder="Saisissez votre adresse e-mail..."
                                     placeholderTextColor={colors.subtext}
                                     value={manualEmail}
                                     onChangeText={setManualEmail}
@@ -236,7 +345,7 @@ export default function ListSelectionScreen() {
                                 <Ionicons name="search" size={18} color={colors.subtext} style={styles.searchIcon} />
                                 <TextInput
                                     style={[styles.searchInput, { color: colors.text }]}
-                                    placeholder="Search recent..."
+                                    placeholder="Recherche récente..."
                                     placeholderTextColor={colors.subtext}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
@@ -246,7 +355,7 @@ export default function ListSelectionScreen() {
 
                             <View style={[styles.contactsBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
                                 {filteredContacts.length === 0 ? (
-                                    <Text style={[styles.emptyText, { color: colors.subtext }]}>No recent contacts found</Text>
+                                    <Text style={[styles.emptyText, { color: colors.subtext }]}>Aucun contact récent trouvé</Text>
                                 ) : (
                                     filteredContacts.map((email) => {
                                         const isChecked = selectedEmails.includes(email);
@@ -271,7 +380,7 @@ export default function ListSelectionScreen() {
                             {/* Chips Section */}
                             {selectedEmails.length > 0 && (
                                 <View style={styles.chipSection}>
-                                    <Text style={[styles.chipTitle, { color: colors.subtext }]}>Selected to Invite:</Text>
+                                    <Text style={[styles.chipTitle, { color: colors.subtext }]}>Sélectionnés pour être invités :</Text>
                                     <View style={styles.chipWrapper}>
                                         {selectedEmails.map((email) => (
                                             <View key={email} style={[styles.chip, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -301,7 +410,7 @@ export default function ListSelectionScreen() {
                                     <ActivityIndicator color="white" size="small" />
                                 ) : (
                                     <Text style={styles.btnConfirmText}>
-                                        Send Invite {selectedEmails.length > 0 ? `(${selectedEmails.length})` : ''}
+                                        Envoyer invitation {selectedEmails.length > 0 ? `(${selectedEmails.length})` : ''}
                                     </Text>
                                 )}
                             </TouchableOpacity>
@@ -314,7 +423,19 @@ export default function ListSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
+    dialogCard: {
+        width: '88%',
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.15,
+        shadowRadius: 6
+    },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalOverlayCenter: {flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center'},
     bottomSheet: {
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -357,7 +478,14 @@ const styles = StyleSheet.create({
     separator: { height: 1, marginBottom: 18 },
     sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 10 },
     row: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-    input: { flex: 1, height: 46, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, fontSize: 15 },
+    input: {
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        fontSize: 15,
+        marginBottom: 16
+    },
     addButton: { marginLeft: 10 },
     searchBarContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 42, marginBottom: 12 },
     searchIcon: { marginRight: 8 },
@@ -385,5 +513,10 @@ const styles = StyleSheet.create({
     },
     textContainer: { flex: 1 },
     title: { fontSize: 17, fontWeight: '600', marginBottom: 4 },
-    data: { fontSize: 13 }
+    data: { fontSize: 13 },
+    fab: {
+        position: 'absolute', right: 16, bottom: 16, width: 56, height: 56, borderRadius: 28,
+        justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 3.84,
+    },
 });

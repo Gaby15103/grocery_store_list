@@ -1,7 +1,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useState} from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList, Keyboard, Platform,
-    TouchableWithoutFeedback, KeyboardAvoidingView
+    TouchableWithoutFeedback, KeyboardAvoidingView, TextInput, Switch
 } from 'react-native';
 import {Drawer} from 'expo-router/drawer';
 import {Ionicons} from '@expo/vector-icons';
@@ -14,7 +14,6 @@ import CustomDropdown from "@/components/CustomDropdown";
 import {GroceryGroup, GroceryItem} from "@/types/models";
 import {ActivityIndicator, Divider} from "react-native-paper";
 import {useSocket, useSocketEvent} from "@/context/socketContext";
-import {socketService} from "@/services/socketService";
 
 interface LayoutContextType {
     openInvitationModal: () => void;
@@ -26,9 +25,14 @@ function CustomDrawerContent(props: any) {
     const [processingId, setProcessingId] = useState<string | null>(null);
     const {loadGroups} = useGroups();
     const {isLoggedIn, userProfile, pendingInvites, refreshSocialData, respondToInvitation} = useAuth();
-    const {groups, activeGroupId, changeActiveGroup} = useGroups();
+    const {groups, activeGroupId, changeActiveGroup, createGroup, makeGroupPublic} = useGroups();
     const {colors} = useTheme();
     const router = useRouter();
+
+    const [newGroupModalVisible, setNewGroupModalVisible] = useState(false);
+    const [newGroupName, setNewGroupName] = useState('');
+    const [isGroupShared, setIsGroupShared] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
 
     const currentRoute = props.state.routes[props.state.index]?.name;
 
@@ -46,6 +50,22 @@ function CustomDrawerContent(props: any) {
         }
     };
 
+    const handleCreateGroupSubmit = async () => {
+        if (!newGroupName.trim()) return;
+        setIsCreating(true);
+        try {
+            let group_id = await createGroup(newGroupName.trim());
+
+            setNewGroupName('');
+            setIsGroupShared(false);
+            setNewGroupModalVisible(false);
+        } catch (error) {
+            console.error("Erreur lors de la création du groupe:", error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
     return (
         <View style={{flex: 1, backgroundColor: colors.card}}>
             <ScrollView
@@ -53,14 +73,14 @@ function CustomDrawerContent(props: any) {
                 contentContainerStyle={{flexGrow: 1, paddingTop: 0}}
                 bounces={false}
             >
-                {/* Header block */}
+                {/* En-tête du Drawer */}
                 <View style={[styles.drawerHeader, {backgroundColor: colors.primary}]}>
                     <Ionicons name="cart" size={42} color="white"/>
                     <Text style={styles.drawerTitle}>Grocery Master</Text>
                     {isLoggedIn && <Text style={styles.drawerSubtitle}>{userProfile?.email}</Text>}
                 </View>
 
-                {/* Dashboard Tile */}
+                {/* Tuile Tableau de bord */}
                 <TouchableOpacity
                     style={[
                         styles.manualTile,
@@ -80,18 +100,19 @@ function CustomDrawerContent(props: any) {
                             fontWeight: currentRoute === 'home' ? '600' : '400'
                         }
                     ]}>
-                        Dashboard
+                        Tableau de bord
                     </Text>
                 </TouchableOpacity>
 
                 <View style={[styles.sectionDivider, {backgroundColor: colors.border}]}/>
 
+                {/* Section Groupe Actif */}
                 <View style={{zIndex: 5000, overflow: 'visible'}}>
-                    <Text style={[styles.sectionLabel, {color: colors.subtext}]}>Active Group</Text>
+                    <Text style={[styles.sectionLabel, {color: colors.subtext}]}>Groupe Actif</Text>
                     <View style={styles.dropdownWrapper}>
                         <CustomDropdown<GroceryGroup>
                             data={groups}
-                            placeholder="Choose a group..."
+                            placeholder="Choisir un groupe..."
                             colors={colors}
                             onSelect={(group) => {
                                 changeActiveGroup(group.id);
@@ -107,7 +128,7 @@ function CustomDrawerContent(props: any) {
                                     <Text style={[styles.itemName, {color: colors.text}]}>{item.name}</Text>
                                     {item.isShared && (
                                         <View style={styles.badge}>
-                                            <Text style={styles.badgeText}>Shared</Text>
+                                            <Text style={styles.badgeText}>Partagé</Text>
                                         </View>
                                     )}
                                 </View>
@@ -116,6 +137,16 @@ function CustomDrawerContent(props: any) {
                     </View>
                 </View>
 
+                {/* Bouton Ajouter un Groupe */}
+                <TouchableOpacity
+                    style={styles.drawerTile}
+                    onPress={() => setNewGroupModalVisible(true)}
+                >
+                    <Ionicons name="add-circle-outline" size={22} color={colors.primary}/>
+                    <Text style={[styles.tileText, {color: colors.text}]}>Créer un groupe</Text>
+                </TouchableOpacity>
+
+                {/* Tuile Invitations Reçues */}
                 <TouchableOpacity
                     style={styles.drawerTile}
                     onPress={() => {
@@ -124,7 +155,7 @@ function CustomDrawerContent(props: any) {
                     }}
                 >
                     <Ionicons name="mail-outline" size={22} color="orange"/>
-                    <Text style={[styles.tileText, {color: colors.text}]}>Received Invitations</Text>
+                    <Text style={[styles.tileText, {color: colors.text}]}>Invitations reçues</Text>
                     {pendingInvites.length > 0 && (
                         <View style={[styles.badge, {backgroundColor: colors.primary || 'orange'}]}>
                             <Text style={styles.badgeText}>{pendingInvites.length}</Text>
@@ -132,6 +163,76 @@ function CustomDrawerContent(props: any) {
                     )}
                 </TouchableOpacity>
 
+                {/* Modal : Créer un Nouveau Groupe */}
+                <Modal
+                    visible={newGroupModalVisible}
+                    animationType='fade'
+                    transparent
+                    onRequestClose={() => setNewGroupModalVisible(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setNewGroupModalVisible(false)}
+                    >
+                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                                style={{width: '100%', alignItems: 'center'}}
+                            >
+                                <TouchableOpacity
+                                    activeOpacity={1}
+                                    style={[styles.dialogCard, {
+                                        backgroundColor: colors.card,
+                                        borderColor: colors.border
+                                    }]}
+                                >
+                                    <View style={styles.modalHeader}>
+                                        <Text style={[styles.modalHeaderTitle, {color: colors.text}]}>Nouveau groupe</Text>
+                                        <TouchableOpacity onPress={() => setNewGroupModalVisible(false)}>
+                                            <Ionicons name="close" size={24} color={colors.subtext}/>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <Text style={[styles.inputLabel, {color: colors.text}]}>Nom du groupe</Text>
+                                    <TextInput
+                                        style={[styles.textInput, {color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBg || 'rgba(255,255,255,0.05)'}]}
+                                        placeholder="Ex: Maison, Chalet..."
+                                        placeholderTextColor={colors.subtext}
+                                        value={newGroupName}
+                                        onChangeText={setNewGroupName}
+                                    />
+
+                                    <View style={styles.switchContainer}>
+                                        <View style={{flex: 1, paddingRight: 8}}>
+                                            <Text style={[styles.switchLabel, {color: colors.text}]}>Groupe public / partagé</Text>
+                                            <Text style={{color: colors.subtext, fontSize: 12}}>Permet d'inviter d'autres membres à voir la liste.</Text>
+                                        </View>
+                                        <Switch
+                                            value={isGroupShared}
+                                            onValueChange={setIsGroupShared}
+                                            trackColor={{ false: "#767577", true: colors.primary }}
+                                        />
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.submitButton, {backgroundColor: colors.primary}]}
+                                        onPress={handleCreateGroupSubmit}
+                                        disabled={isCreating || !newGroupName.trim()}
+                                    >
+                                        {isCreating ? (
+                                            <ActivityIndicator size="small" color="white" />
+                                        ) : (
+                                            <Text style={styles.submitButtonText}>Créer le groupe</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            </KeyboardAvoidingView>
+                        </TouchableWithoutFeedback>
+                    </TouchableOpacity>
+                </Modal>
+
+                {/* Modal : Invitations Reçues */}
                 <Modal
                     visible={props.invitationModalVisible}
                     animationType='fade'
@@ -167,15 +268,14 @@ function CustomDrawerContent(props: any) {
                                             <View style={[styles.iconCircle, {backgroundColor: `${colors.text}10`}]}>
                                                 <Ionicons name="mail-open-outline" size={32} color="orange"/>
                                             </View>
-                                            <Text style={[styles.emptyText, {color: colors.text}]}>No pending
-                                                invitations</Text>
+                                            <Text style={[styles.emptyText, {color: colors.text}]}>Aucune invitation en attente</Text>
                                             <Text style={{
                                                 color: colors.subtext,
                                                 fontSize: 13,
                                                 textAlign: 'center',
                                                 marginTop: 4
                                             }}>
-                                                When someone invites you to join a list, it will appear here.
+                                                Quand quelqu'un vous invite à rejoindre une liste, elle apparaîtra ici.
                                             </Text>
                                         </View>
                                     ) : (
@@ -190,33 +290,28 @@ function CustomDrawerContent(props: any) {
                                                     backgroundColor: colors.inputBg || '#1e1e1e',
                                                     borderColor: colors.border
                                                 }]}>
-                                                    <View
-                                                        style={[styles.cardAccentStrip, {backgroundColor: colors.primary}]}/>
+                                                    <View style={[styles.cardAccentStrip, {backgroundColor: colors.primary}]}/>
 
                                                     <View style={styles.inviteCardContent}>
                                                         <View style={{flex: 1, marginRight: 8}}>
-                                                            <Text style={[styles.inviteGroupName, {color: colors.text}]}
-                                                                  numberOfLines={1}>
-                                                                {item.GroupName ?? 'Unnamed Group'}
+                                                            <Text style={[styles.inviteGroupName, {color: colors.text}]} numberOfLines={1}>
+                                                                {item.GroupName ?? 'Groupe sans nom'}
                                                             </Text>
-                                                            <Text style={[styles.inviteOwner, {color: colors.subtext}]}
-                                                                  numberOfLines={1}>
-                                                                From: {item.OwnerEmail}
+                                                            <Text style={[styles.inviteOwner, {color: colors.subtext}]} numberOfLines={1}>
+                                                                De : {item.OwnerEmail}
                                                             </Text>
                                                         </View>
 
                                                         <View style={styles.inviteActionContainer}>
                                                             {processingId === item.groupId ? (
-                                                                <ActivityIndicator size="small" color={colors.primary}
-                                                                                   style={{marginRight: 12}}/>
+                                                                <ActivityIndicator size="small" color={colors.primary} style={{marginRight: 12}}/>
                                                             ) : (
                                                                 <>
                                                                     <TouchableOpacity
                                                                         onPress={() => handleResponse(item.groupId, 'accepted')}
                                                                         style={[styles.actionPillButton, styles.acceptPill]}
                                                                     >
-                                                                        <Ionicons name="checkmark" size={18}
-                                                                                  color="white"/>
+                                                                        <Ionicons name="checkmark" size={18} color="white"/>
                                                                     </TouchableOpacity>
                                                                     <TouchableOpacity
                                                                         onPress={() => handleResponse(item.groupId, 'declined')}
@@ -238,6 +333,7 @@ function CustomDrawerContent(props: any) {
                     </TouchableOpacity>
                 </Modal>
 
+                {/* Tuile Paramètres */}
                 <TouchableOpacity
                     style={[
                         styles.manualTile,
@@ -257,7 +353,7 @@ function CustomDrawerContent(props: any) {
                             fontWeight: currentRoute === 'settings' ? '600' : '400'
                         }
                     ]}>
-                        Settings
+                        Paramètres
                     </Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -507,5 +603,39 @@ const styles = StyleSheet.create({
     manualTileText: {
         fontSize: 15,
         marginLeft: 32,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 6,
+    },
+    textInput: {
+        height: 44,
+        borderRadius: 8,
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        fontSize: 15,
+        marginBottom: 16,
+    },
+    switchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+    },
+    switchLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    submitButton: {
+        height: 46,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

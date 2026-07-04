@@ -51,7 +51,7 @@ export default function HomeScreen() {
                 {item.name}
             </Text>
             <Text style={[styles.cardSubtitle, {color: colors.subtext}]}>
-                Active Group
+                Groupe actif
             </Text>
         </TouchableOpacity>
     );
@@ -65,10 +65,10 @@ export default function HomeScreen() {
 
             <View style={styles.welcomeSection}>
                 <Text style={[styles.welcomeText, {color: colors.text}]}>
-                    Welcome, {userProfile?.firstName || 'Chef'}
+                    Bienvenue, {userProfile?.firstName || 'Chef'}
                 </Text>
                 <Text style={[styles.statusText, {color: colors.subtext}]}>
-                    Kitchen Status
+                    État de la cuisine
                 </Text>
             </View>
 
@@ -99,16 +99,16 @@ export default function HomeScreen() {
                 />
                 <View style={styles.bannerTextContainer}>
                     <Text style={[styles.bannerTitle, {color: colors.text}]}>
-                        {isLoggedIn ? "Status Online" : "Status Offline"}
+                        {isLoggedIn ? "Statut en ligne" : "Statut hors ligne"}
                     </Text>
                     <Text style={[styles.bannerSubtitle, {color: colors.subtext}]}>
-                        {isLoggedIn ? "Cloud sync enabled" : "Sync disabled"}
+                        {isLoggedIn ? "Synchronisation cloud activée" : "Synchronisation désactivée"}
                     </Text>
                 </View>
             </View>
 
             <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, {color: colors.text}]}>Quick Access</Text>
+                <Text style={[styles.sectionTitle, {color: colors.text}]}>Accès rapide</Text>
             </View>
 
             <View style={styles.gridContainer}>
@@ -118,7 +118,7 @@ export default function HomeScreen() {
                     activeOpacity={0.7}
                 >
                     <Ionicons name="book-outline" size={32} color="#f97316"/>
-                    <Text style={[styles.actionCardText, {color: '#f97316'}]}>Recipes</Text>
+                    <Text style={[styles.actionCardText, {color: '#f97316'}]}>Recettes</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
