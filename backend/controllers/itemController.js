@@ -58,17 +58,20 @@ exports.getTypes = async (req, res) => {
         res.status(500).json({error: e.message});
     }
 }
-
 exports.getListItems = async (req, res) => {
     try {
         const items = await Item.findAll({
-            where: {ListId: req.params.listId},
-            include: [{model: Type, attributes: ['id', 'name']}],
+            where: { ListId: req.params.listId },
+            include: [{
+                model: Type,
+                as: 'type',
+                attributes: ['id', 'name']
+            }],
             order: [['createdAt', 'ASC']]
         });
         res.json(items);
     } catch (e) {
-        res.status(500).json({error: e.message});
+        res.status(500).json({ error: e.message });
     }
 };
 
