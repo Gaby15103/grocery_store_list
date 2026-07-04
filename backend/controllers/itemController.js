@@ -62,6 +62,7 @@ exports.getListItems = async (req, res) => {
     try {
         const items = await Item.findAll({
             where: { ListId: req.params.listId },
+            attributes: { exclude: ['TypeId', 'typeId'] },
             include: [{
                 model: Type,
                 as: 'type',
@@ -76,13 +77,20 @@ exports.getListItems = async (req, res) => {
 };
 
 exports.createItem = async (req, res) => {
-    const {name, status, listId, groupId, note, imagePath, TypeId} = req.body;
+    const {name, status, listId, groupId, note, imagePath, type} = req.body;
     const senderEmail = req.headers['x-user-email'];
 
     try {
-        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: TypeId});
+        const actualTypeId = type ? type.id : null;
+        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: actualTypeId});
 
-        item = await Item.findByPk(item.id, {include: [Type]});
+        item = await Item.findByPk(item.id, {
+            include: [{ model: Type, as: 'type' }]
+        });
+
+        const cleanedItem = item.toJSON();
+        delete cleanedItem.TypeId;
+        delete cleanedItem.typeId;
 
         if (groupId) {
             const user = await User.findOne({where: {email: senderEmail}});
@@ -124,26 +132,32 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const {id, name, listId, status, groupId, note, imagePath, TypeId} = req.body;
+    const {id, name, listId, status, groupId, note, imagePath, type} = req.body;
     const senderEmail = req.headers['x-user-email'];
     try {
+        const actualTypeId = type ? type.id : null;
+
         const [updatedRows] = await Item.update(
             {name, status, note, imagePath, TypeId: TypeId},
             {where: {id}}
         );
 
         if (updatedRows > 0 && groupId) {
-            const updatedItem = await Item.findByPk(id, {include: [Type]});
-
-            req.io.to(groupId.toString()).emit('item_updated', {
-                id,
-                name,
-                listId,
-                status,
-                note,
-                imagePath,
-                Type: updatedItem.Type
+            const updatedItem = await Item.findByPk(id, {
+                include: [{ model: Type, as: 'type' }]
             });
+
+            if (updatedItem) {
+                req.io.to(groupId.toString()).emit('item_updated', {
+                    id,
+                    name,
+                    listId,
+                    status,
+                    note,
+                    imagePath,
+                    type: updatedItem.type
+                });
+            }
 
             if (status === 'bought') {
                 await sendPushToGroup(groupId, senderEmail, {
