@@ -76,11 +76,13 @@ exports.getListItems = async (req, res) => {
 };
 
 exports.createItem = async (req, res) => {
-    const {name, status, listId, groupId, note, imagePath, typeId} = req.body;
+    const {name, status, listId, groupId, note, imagePath, type} = req.body;
     const senderEmail = req.headers['x-user-email'];
 
     try {
-        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: typeId});
+        const actualTypeId = type ? type.id : null;
+
+        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: actualTypeId});
 
         item = await Item.findByPk(item.id, {include: [Type]});
 
@@ -124,11 +126,13 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const {id, name, listId, status, groupId, note, imagePath, typeId} = req.body;
+    const {id, name, listId, status, groupId, note, imagePath, type} = req.body;
     const senderEmail = req.headers['x-user-email'];
     try {
+        const actualTypeId = type ? type.id : null;
+
         const [updatedRows] = await Item.update(
-            {name, status, note, imagePath, TypeId: typeId},
+            {name, status, note, imagePath, TypeId: actualTypeId},
             {where: {id}}
         );
 
