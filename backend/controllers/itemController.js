@@ -81,7 +81,6 @@ exports.createItem = async (req, res) => {
     const senderEmail = req.headers['x-user-email'];
 
     try {
-        const actualTypeId = type ? type.id : null;
         let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: TypeId});
 
         if (groupId) {
@@ -114,7 +113,7 @@ exports.deleteItem = async (req, res) => {
             sendPushToGroup(groupId, senderEmail, {
                 type: 'item_deleted',
                 itemName: name,
-                listId: listId.toString()
+                listId: listId
             });
         }
         res.status(200).json({message: "Deleted"});
