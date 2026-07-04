@@ -77,20 +77,12 @@ exports.getListItems = async (req, res) => {
 };
 
 exports.createItem = async (req, res) => {
-    const {name, status, listId, groupId, note, imagePath, type} = req.body;
+    const {name, status, listId, groupId, note, imagePath, TypeId} = req.body;
     const senderEmail = req.headers['x-user-email'];
 
     try {
         const actualTypeId = type ? type.id : null;
-        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: actualTypeId});
-
-        item = await Item.findByPk(item.id, {
-            include: [{ model: Type, as: 'type' }]
-        });
-
-        const cleanedItem = item.toJSON();
-        delete cleanedItem.TypeId;
-        delete cleanedItem.typeId;
+        let item = await Item.create({name, status, ListId: listId, note, imagePath, TypeId: TypeId});
 
         if (groupId) {
             const user = await User.findOne({where: {email: senderEmail}});
@@ -132,13 +124,11 @@ exports.deleteItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-    const {id, name, listId, status, groupId, note, imagePath, type} = req.body;
+    const {id, name, listId, status, groupId, note, imagePath, TypeId} = req.body;
     const senderEmail = req.headers['x-user-email'];
     try {
-        const actualTypeId = type ? type.id : null;
-
         const [updatedRows] = await Item.update(
-            {name, status, note, imagePath, TypeId: actualTypeId},
+            {name, status, note, imagePath, TypeId},
             {where: {id}}
         );
 

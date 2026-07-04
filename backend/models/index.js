@@ -59,10 +59,6 @@ const Type = sequelize.define('Type', {
     },
     name: {type: DataTypes.STRING, allowNull: false, unique: true}
 });
-const ItemType = sequelize.define('ItemType', {
-    type_id: {type: DataTypes.UUID, allowNull: false},
-    item_id: {type: DataTypes.UUID, allowNull: false},
-})
 
 
 // Relationships
