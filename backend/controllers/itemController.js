@@ -138,7 +138,7 @@ exports.updateItem = async (req, res) => {
         const actualTypeId = type ? type.id : null;
 
         const [updatedRows] = await Item.update(
-            {name, status, note, imagePath, TypeId: TypeId},
+            {name, status, note, imagePath, TypeId: actualTypeId},
             {where: {id}}
         );
 
