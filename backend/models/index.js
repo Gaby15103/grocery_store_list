@@ -80,6 +80,6 @@ UserGroup.belongsTo(Group, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
 Group.hasMany(UserGroup, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
 
 Type.hasMany(Item, {foreignKey: 'TypeId'});
-Item.belongsTo(Type, {foreignKey: 'TypeId'});
+Item.belongsTo(Type, { foreignKey: 'TypeId', as: 'type' });
 
 module.exports = {Group, List, Item, User, UserGroup, Type, sequelize, Op};
