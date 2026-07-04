@@ -280,6 +280,8 @@ export default function GroceryListScreen() {
         setClearImage(false);
         setSelectedType(null);
         setEditModalVisible(false);
+        loadItems(sessionId, effectiveGroupId);
+        setSort(currentSort, !isInverse);
     };
 
     const getItemTextStyle = (status: ItemStatus) => {
