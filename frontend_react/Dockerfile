@@ -1,5 +1,5 @@
 # Stage 1: Build the Expo/React Native Web app
-FROM node:20-alpine AS build-env
+FROM node:23-alpine AS build-env
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (including devDependencies needed for build)
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the frontend application code
 COPY . .

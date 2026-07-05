@@ -7,7 +7,8 @@ WORKDIR /app
 COPY . .
 RUN find lib -name "*.dart" -exec sed -i 's/api-grocery/apigrocery/g' {} +
 RUN flutter pub get
-RUN flutter build web --release --no-wasm-dry-run
+RUN flutter config --enable-web && \
+    flutter build web --release --no-tree-shake-icons
 
 RUN VERSION=$(date +%s) && \
     # 1. Main JS Entry points

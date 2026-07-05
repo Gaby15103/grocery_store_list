@@ -51,7 +51,7 @@ app.use('/upload', require('./routes/uploadRoutes'));
 
 const PORT = process.env.PORT || 3000;
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync({ forcce: true, alter: true }).then(() => {
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 API & WebSockets active: http://localhost:${PORT}`);
     });
