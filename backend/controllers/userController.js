@@ -33,8 +33,8 @@ exports.registerAndSendKey = async (req, res) => {
 
         await sendSyncKeyEmail(user, generatedSyncKey, message);
 
-        res.status(created ? 201 : 200).json({
-            message: created ? "User registered and key emailed." : "Device linked successfully.",
+        res.status(201).json({
+            message: "User registered and key emailed.",
             user: {
                 email: user.email,
                 firstName: user.firstName,

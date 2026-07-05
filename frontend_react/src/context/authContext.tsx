@@ -76,12 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         try {
             await authRepository.createUserToGroup(fName, lName, email, targetGroupId, message);
-            setIsLoggedIn(true);
-
-            const code = await authRepository.getSyncCode();
-            setSyncCode(code);
-
-            await loadProfile();
         } finally {
             setIsLoading(false);
         }

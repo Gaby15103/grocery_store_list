@@ -137,7 +137,6 @@ export class BaseApi {
         if (statusCode >= 200 && statusCode < 300) {
             const text = await response.text();
             if (!text) return null as unknown as T;
-
             const json = JSON.parse(text);
 
             return fromJson ? fromJson(json) : (json as T);
