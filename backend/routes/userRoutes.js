@@ -3,6 +3,7 @@ const router = express.Router();
 const userCtrl = require('../controllers/userController');
 
 router.post('/register', userCtrl.register);
+router.post('/create', userCtrl.registerAndSendKey);
 router.get('/invitations', userCtrl.getInvitations);
 router.put('/profile', userCtrl.updateProfile);
 router.post('/link', userCtrl.linkAccount);

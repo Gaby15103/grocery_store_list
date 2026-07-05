@@ -1,5 +1,51 @@
 const { User, UserGroup, Group, Op } = require('../models');
 const admin = require('../config/firebase-init');
+const crypto = require('crypto');
+const { sendSyncKeyEmail } = require('../utils/email');
+
+exports.registerAndSendKey = async (req, res) => {
+    const { email, firstName, lastName, currentDeviceId } = req.body;
+
+    try {
+        if (!email || !currentDeviceId) {
+            return res.status(400).json({ error: "Email and currentDeviceId are required." });
+        }
+
+        const generatedSyncKey = crypto.randomBytes(16).toString('hex');
+
+        const [user, created] = await User.findOrCreate({
+            where: { email: email.toLowerCase().trim() },
+            defaults: {
+                firstName,
+                lastName,
+                authorizedDevices: [currentDeviceId, generatedSyncKey]
+            }
+        });
+
+        if (!created) {
+            let devices = [...user.authorizedDevices];
+            if (!devices.includes(currentDeviceId)) {
+                devices.push(currentDeviceId);
+                user.authorizedDevices = devices;
+                await user.save();
+            }
+        }
+
+        await sendSyncKeyEmail(user, generatedSyncKey);
+
+        res.status(created ? 201 : 200).json({
+            message: created ? "User registered and key emailed." : "Device linked successfully.",
+            user: {
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 exports.register = async (req, res) => {
     try {
