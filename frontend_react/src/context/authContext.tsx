@@ -12,6 +12,7 @@ interface AuthContextType {
     recentContacts: string[];
     loadProfile: () => Promise<void>;
     register: (fName: string, lName: string, email: string) => Promise<void>;
+    provisionNewUser :(fName: string, lName: string, email: string, targetGroupId?: string, message?: string) => Promise<void>;
     updateProfile: (firstName: string, lastName: string, email: string) => Promise<void>;
     linkWithCode: (code: string) => Promise<void>;
     syncTokenWithServer: () => Promise<void>;
@@ -71,6 +72,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
         }
     };
+    const provisionNewUser = async (fName: string, lName: string, email: string, targetGroupId?: string, message?: string) => {
+        setIsLoading(true);
+        try {
+            await authRepository.createUserToGroup(fName, lName, email, targetGroupId, message);
+            setIsLoggedIn(true);
+
+            const code = await authRepository.getSyncCode();
+            setSyncCode(code);
+
+            await loadProfile();
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     const updateProfile = async (firstName: string, lastName: string, email: string) => {
         setIsLoading(true);
@@ -173,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 recentContacts,
                 loadProfile,
                 register,
+                provisionNewUser,
                 updateProfile,
                 linkWithCode,
                 syncTokenWithServer,

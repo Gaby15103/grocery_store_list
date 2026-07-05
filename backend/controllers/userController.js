@@ -4,11 +4,11 @@ const crypto = require('crypto');
 const { sendSyncKeyEmail } = require('../utils/email');
 
 exports.registerAndSendKey = async (req, res) => {
-    const { email, firstName, lastName, currentDeviceId } = req.body;
+    const { email, firstName, lastName, message } = req.body;
 
     try {
-        if (!email || !currentDeviceId) {
-            return res.status(400).json({ error: "Email and currentDeviceId are required." });
+        if (!email) {
+            return res.status(400).json({ error: "Email is required." });
         }
 
         const generatedSyncKey = crypto.randomBytes(16).toString('hex');
@@ -18,20 +18,20 @@ exports.registerAndSendKey = async (req, res) => {
             defaults: {
                 firstName,
                 lastName,
-                authorizedDevices: [currentDeviceId, generatedSyncKey]
+                authorizedDevices: [generatedSyncKey]
             }
         });
 
         if (!created) {
             let devices = [...user.authorizedDevices];
-            if (!devices.includes(currentDeviceId)) {
-                devices.push(currentDeviceId);
+            if (!devices.includes(generatedSyncKey)) {
+                devices.push(generatedSyncKey);
                 user.authorizedDevices = devices;
                 await user.save();
             }
         }
 
-        await sendSyncKeyEmail(user, generatedSyncKey);
+        await sendSyncKeyEmail(user, generatedSyncKey, message);
 
         res.status(created ? 201 : 200).json({
             message: created ? "User registered and key emailed." : "Device linked successfully.",

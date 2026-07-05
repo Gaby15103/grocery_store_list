@@ -6,6 +6,12 @@ export interface RegisterPayload {
     email: string;
     deviceId: string;
 }
+export interface CreatePayload {
+    email: string;
+    firstName: string;
+    lastName: string;
+    message?: string;
+}
 
 export interface UpdateProfilePayload {
     firstName: string;
@@ -34,6 +40,17 @@ class AuthApiClient extends BaseApi {
             path: '/users/register',
             body: payload,
         });
+    }
+
+    /**
+     * POST create new user
+     */
+    async createUser(payload: CreatePayload): Promise<void> {
+        return this.request<void>({
+            method: 'POST',
+            path: '/users/create',
+            body: payload,
+        })
     }
 
     /**

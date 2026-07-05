@@ -19,7 +19,7 @@ import { useGroups } from "@/context/groupContext";
 import { useLists } from "@/context/listContext";
 import {GroceryItem, GroceryList} from "@/types/models";
 import { useTheme } from "@/context/themeContext";
-import { Ionicons } from "@expo/vector-icons";
+import {AntDesign, Ionicons} from "@expo/vector-icons";
 import { useAuth } from "@/context/authContext";
 import {useSocketEvent} from "@/context/socketContext";
 
@@ -183,15 +183,28 @@ export default function ListSelectionScreen() {
                     ),
                     headerRight: () => (
                         groupId ? (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    refreshSocialData();
-                                    setInvitationVisible(true);
-                                }}
-                                style={{ marginRight: 16 }}
-                            >
-                                <Ionicons name="person-add" size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            <View style={{flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingRight: 16 ,}}>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        router.push({pathname: '/drawer/AddMemberScreen', params: {groupId}});
+                                    }}
+                                    style={{ marginRight: 16 }}
+                                >
+                                    <AntDesign name="user-add" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        refreshSocialData();
+                                        setInvitationVisible(true);
+                                    }}
+                                    style={{ marginRight: 16 }}
+                                >
+                                    <Ionicons name="person-add" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
                         ) : null
                     )
                 }}

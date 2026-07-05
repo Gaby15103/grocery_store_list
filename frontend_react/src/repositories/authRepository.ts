@@ -65,6 +65,18 @@ class AuthRepository {
         ]);
     }
 
+    async createUserToGroup(fName: string, lName: string, email: string, targetGroupId?: string, message?: string): Promise<void> {
+        await authApiClient.createUser({
+            email: email,
+            firstName: fName,
+            lastName: lName,
+            message: message,
+        });
+        if (targetGroupId != null) {
+           await this.inviteUser(targetGroupId, email);
+        }
+    }
+
     async updateProfile(firstName: string, lastName: string, email: string): Promise<void> {
         await authApiClient.updateProfile({ firstName, lastName, email });
 
