@@ -19,6 +19,9 @@
       - ./public/uploads:/app/public/uploads
     env_file:
       - .env
+    networks:
+      - default
+      - mailcow_net
     depends_on:
       - postgres
 
@@ -33,3 +36,9 @@
 
 volumes:
   postgresDb:
+
+networks:
+  default:
+  mailcow_net:
+    external: true
+    name: mailcowdockerized_mailcow-network
