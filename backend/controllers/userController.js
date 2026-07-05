@@ -33,7 +33,14 @@ exports.registerAndSendKey = async (req, res) => {
 
         await sendSyncKeyEmail(user, generatedSyncKey, message);
 
-        res.status(201).json({message: "User registered and key emailed."});
+        res.status(201).json({
+            message: "User registered and key emailed.",
+            user: {
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName
+            }
+        });
 
     } catch (error) {
         res.status(500).json({ error: error.message });

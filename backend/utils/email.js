@@ -26,13 +26,13 @@ const transporter = nodemailer.createTransport(config);
  * Sends a permanent device sync/backup key to the user
  */
 exports.sendSyncKeyEmail = async (user, syncKey, message = null) => {
-    const fromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@homerecipes.com';
+    const fromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@grocery-master.com';
 
     const htmlBody = `
             <html>
             <body style="font-family: sans-serif; color: #18181b; line-height: 1.5;">
                 <h3>Bonjour ${user.firstName},</h3>
-                <p>Bienvenue sur <b>HomeRecipes</b>! Votre compte d'application de courses a été initialisé.</p>
+                <p>Bienvenue sur <b>Grocery Master</b>! Votre compte d'application de courses a été initialisé.</p>
                 
                 ${message && message.trim() ? `
                 <div style="margin: 16px 0; padding: 12px 16px; border-left: 4px solid #2563eb; backgroundColor: #eff6ff; color: #1e40af; font-style: italic;">
@@ -46,16 +46,16 @@ exports.sendSyncKeyEmail = async (user, syncKey, message = null) => {
                 </div>
                 <p>Utilisez cette clé sur vos autres appareils pour les connecter en toute sécurité à vos listes partagées.</p>
                 
-                <p>Merci,<br/>L'équipe HomeRecipes</p>
+                <p>Merci,<br/>L'équipe Grocery Master</p>
             </body>
             </html>
             `;
 
-    const textBody = `Hello ${user.firstName},\n\nWelcome to HomeRecipes!\n\nYour permanent device synchronization and backup key is:\n\n${syncKey}\n\nUse this key on your other devices to pair them to your shared lists.\n\nThanks,\nThe HomeRecipes Team`;
+    const textBody = `Hello ${user.firstName},\n\nWelcome to Grocery Master!\n\nYour permanent device synchronization and backup key is:\n\n${syncKey}\n\nUse this key on your other devices to pair them to your shared lists.\n\nThanks,\nThe HomeRecipes Team`;
 
     try {
         await transporter.sendMail({
-            from: `"HomeRecipes" <${fromAddress}>`,
+            from: `"Grocery Master" <${fromAddress}>`,
             to: user.email,
             subject: 'HomeRecipes - Your Synchronization Key',
             text: textBody,
