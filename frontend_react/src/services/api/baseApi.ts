@@ -7,6 +7,7 @@ import { File } from 'expo-file-system';
 import { fetch as expoFetch } from 'expo/fetch';
 
 const BASE_URL = "https://apigrocery.gaby15103.org";
+const BASE_URL_LOCAL = "http://10.0.2.2:3000"
 
 export interface UploadFilePayload {
     uri: string;
@@ -48,7 +49,10 @@ export class BaseApi {
         body?: any;
         fromJson?: (json: any) => T;
     }): Promise<T> {
-        const url = `${BASE_URL}${path}`;
+        let url = `${BASE_URL}${path}`;
+        if (__DEV__){
+            url = `${BASE_URL_LOCAL}${path}`
+        }
         let headers = await this.getHeaders();
         let finalBody = body;
 
@@ -61,6 +65,10 @@ export class BaseApi {
         } else if (body) {
             finalBody = JSON.stringify(body);
         }
+
+        console.log(url)
+        console.log(finalBody);
+        console.log(headers)
 
         try {
             const response = await fetch(url, {
@@ -137,9 +145,18 @@ export class BaseApi {
         if (statusCode >= 200 && statusCode < 300) {
             const text = await response.text();
             if (!text) return null as unknown as T;
-            const json = JSON.parse(text);
 
-            return fromJson ? fromJson(json) : (json as T);
+            const isJson = text.trim().startsWith('{') || text.trim().startsWith('[');
+            if (!isJson) {
+                return text as unknown as T;
+            }
+
+            try {
+                const json = JSON.parse(text);
+                return fromJson ? fromJson(json) : (json as T);
+            } catch (e) {
+                throw new Error(`Invalid JSON structure received from server: ${text}`);
+            }
         }
 
         let errorMessage = `Server returned status code ${statusCode}`;

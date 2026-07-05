@@ -27,12 +27,31 @@
 
   frontend:
     build: ./frontend
+    profiles:
+      - local
     container_name: grocery_frontend
     restart: always
     ports:
       - '8083:80'
     depends_on:
       - backend
+
+  frontend_react:
+      build: ./frontend_react
+      container_name: grocery_frontend_react
+      restart: always
+      ports:
+        - '8083:80'
+      depends_on:
+        - backend
+
+  mailhog:
+    image: mailhog/mailhog
+    profiles:
+      - local
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   postgresDb:

@@ -68,7 +68,6 @@ class AuthApiClient extends BaseApi {
      * POST link devices via sync code
      */
     async linkDevices(currentDeviceId: string, targetCode: string): Promise<User> {
-        // Mimics the exact Dart extract mapper: (json) => json['user']
         const response = await this.request<{ user: User }>({
             method: 'POST',
             path: '/users/link',

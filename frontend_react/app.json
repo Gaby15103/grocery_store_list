@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "frontend_react",
-    "slug": "frontend_react",
+    "name": "Grocery Master",
+    "slug": "grocery-master",
+    "scheme": "grocerymaster",
     "version": "1.0.0",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontendreact",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -19,11 +19,33 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.gaby15103.frontend_react"
+      "package": "com.gaby15103.grocery_master",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "apigrocery.gaby15103.org",
+              "pathPrefix": "/setup"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "pwa": {
+        "icon": "./assets/images/icon.png",
+        "themeColor": "#208AEF",
+        "backgroundColor": "#E6F4FE"
+      }
     },
     "plugins": [
       "expo-router",

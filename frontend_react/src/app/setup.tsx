@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -13,18 +13,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from "@/context/authContext";
 import {useTheme} from "@/context/themeContext";
+import * as Linking from 'expo-linking';
 
 export default function SetupScreen() {
     const { register, linkWithCode, isLoading } = useAuth();
     const router = useRouter();
 
-    // Champs d'état du formulaire
     const [isSyncingMode, setIsSyncingMode] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [syncCodeInput, setSyncCodeInput] = useState('');
     const { colors } = useTheme();
+
+    useEffect(() => {
+        Linking.getInitialURL().then((url) => {
+            if (url) handleIncomingUrl(url);
+        });
+
+        const subscription = Linking.addEventListener('url', (event) => {
+            handleIncomingUrl(event.url);
+        });
+
+        return () => subscription.remove();
+    }, []);
+
+    const handleIncomingUrl = (url: string) => {
+        const { path, queryParams } = Linking.parse(url);
+        if ((path === 'setup' || url.includes('/setup')) && queryParams?.code) {
+            setIsSyncingMode(true);
+            setSyncCodeInput(queryParams.code as string);
+        }
+    };
 
     const handleRegisterSubmit = async () => {
         const fNameTrimmed = firstName.trim();

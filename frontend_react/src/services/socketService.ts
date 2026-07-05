@@ -39,7 +39,7 @@ export class SocketService {
             return;
         }
 
-        this.socket = io("https://apigrocery.gaby15103.org", {
+        this.socket = io(__DEV__ ? "http://localhost:3000" : "https://apigrocery.gaby15103.org", {
             transports: ['websocket'],
             autoConnect: false,
             auth: {email: userEmail},
@@ -95,8 +95,6 @@ export class SocketService {
         if (this.socket?.connected) {
             console.log(`🚀 Joining room: ${groupId}`);
             this.socket.emit('join_group', groupId);
-        } else {
-            console.warn('⚠️ Cannot join group: Socket is not connected');
         }
     }
 
