@@ -8,6 +8,9 @@ const config = {
     host: smtpHost,
     port: smtpPort,
     secure: smtpPort === 465,
+    tls: {
+        rejectUnauthorized: false
+    }
 };
 
 if (process.env.SMTP_USER) {
