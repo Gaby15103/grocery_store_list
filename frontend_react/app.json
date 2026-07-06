@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Grocery Master",
-    "slug": "grocery-master",
+    "slug": "frontend_react",
     "scheme": "grocerymaster",
     "version": "1.0.0",
     "orientation": "portrait",

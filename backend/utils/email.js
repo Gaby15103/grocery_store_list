@@ -28,7 +28,7 @@ const transporter = nodemailer.createTransport(config);
 exports.sendSyncKeyEmail = async (user, syncKey, message = null) => {
     const fromAddress = process.env.MAIL_FROM_ADDRESS || 'no-reply@grocery-master.com';
 
-    const syncLink = `https://apigrocery.gaby15103.org/setup?code=${encodeURIComponent(syncKey)}`;
+    const syncLink = `https://grocery.gaby15103.org/setup?code=${encodeURIComponent(syncKey)}`;
 
     const htmlBody = `
             <html>
