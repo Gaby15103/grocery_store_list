@@ -22,6 +22,9 @@ FROM nginx:alpine
 # Copy your existing custom Nginx routing config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Wipe the default Nginx welcome pages completely
+RUN rm -rf /usr/share/nginx/html/*
+
 # Copy the Expo static build output from Stage 1 to Nginx default public directory
 COPY --from=build-env /app/dist /usr/share/nginx/html
 
