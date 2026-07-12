@@ -54,5 +54,18 @@ const PORT = process.env.PORT || 3000;
 sequelize.sync({ forcce: true, alter: true }).then(() => {
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 API & WebSockets active: http://localhost:${PORT}`);
+        app.use((err, req, res, next) => {
+            console.error('❌ Global Error Handler:');
+            console.error('   Message:', err.message);
+            console.error('   Stack:', err.stack);
+
+            // Send a structured error response
+            res.status(500).json({
+                success: false,
+                message: 'Internal Server Error',
+                error: err.message,
+                path: req.url
+            });
+        });
     });
 }).catch(err => console.error("❌ Sync Error:", err));
