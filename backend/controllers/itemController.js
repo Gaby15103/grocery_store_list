@@ -1,4 +1,4 @@
-import {v4 as uuidv4} from 'uuid';
+const { v4: uuidv4 } = require('uuid');
 const {List, Item, sequelize, User, Group, Type} = require('../models');
 const {sendPushToGroup} = require('../utils/push-notifications');
 
