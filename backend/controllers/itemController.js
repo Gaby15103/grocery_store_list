@@ -179,6 +179,7 @@ exports.syncItems = async (req, res) => {
 
 exports.archiveAndCarryOver = async (req, res) => {
     const {listId} = req.params;
+    console.log(listId);
     const {newName} = req.body;
     const t = await sequelize.transaction();
 
