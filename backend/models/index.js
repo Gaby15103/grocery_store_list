@@ -60,6 +60,9 @@ const Type = sequelize.define('Type', {
     name: {type: DataTypes.STRING, allowNull: false, unique: true}
 });
 
+sequelize.beforeSync(async () => {
+    await sequelize.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+});
 
 // Relationships
 Group.hasMany(List, {onDelete: 'CASCADE', foreignKey: 'GroupId'});
