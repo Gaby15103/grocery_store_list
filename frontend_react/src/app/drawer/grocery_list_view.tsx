@@ -58,10 +58,11 @@ export default function GroceryListScreen() {
         setSort,
         applySort,
         setOpenedList,
+        currentListId,
         itemTypes
     } = useItems();
     const {activeGroupId, isCurrentGroupShared} = useGroups();
-    const {archiveList, currentListId} = useLists();
+    const {archiveList} = useLists();
 
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
