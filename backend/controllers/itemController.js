@@ -1,3 +1,4 @@
+import {v4 as uuidv4} from 'uuid';
 const {List, Item, sequelize, User, Group, Type} = require('../models');
 const {sendPushToGroup} = require('../utils/push-notifications');
 
@@ -5,7 +6,8 @@ const {sendPushToGroup} = require('../utils/push-notifications');
 exports.createList = async (req, res) => {
     const {name, GroupId} = req.body;
     try {
-        const newList = await List.create({name, GroupId, createdAt: new Date()});
+        const newListId = uuidv4();
+        const newList = await List.create({id:newListId, name, GroupId, createdAt: new Date()});
         res.status(201).json(newList);
     } catch (error) {
         res.status(500).json({error: error.message});
@@ -189,7 +191,9 @@ exports.archiveAndCarryOver = async (req, res) => {
 
         await oldList.update({isArchived: true}, {transaction: t});
 
+        const newListId = uuidv4();
         const newList = await List.create({
+            id: newListId,
             name: newName || `${oldList.name} (Cont.)`,
             GroupId: oldList.GroupId,
             isArchived: false
