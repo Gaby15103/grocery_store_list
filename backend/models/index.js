@@ -1,4 +1,4 @@
-const {DataTypes, Op} = require('sequelize');
+const {DataTypes, Op, literal} = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
@@ -30,7 +30,7 @@ const UserGroup = sequelize.define('UserGroup', {
 });
 
 const List = sequelize.define('List', {
-    id: {type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true},
+    id: {type: DataTypes.UUID, defaultValue: literal('gen_random_uuid()'), primaryKey: true},
     name: {type: DataTypes.STRING, allowNull: false},
     isArchived: {type: DataTypes.BOOLEAN, defaultValue: false},
 });

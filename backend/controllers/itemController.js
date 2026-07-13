@@ -189,9 +189,7 @@ exports.archiveAndCarryOver = async (req, res) => {
 
         await oldList.update({isArchived: true}, {transaction: t});
 
-        const newListId = `list_${Date.now()}`;
         const newList = await List.create({
-            id: newListId,
             name: newName || `${oldList.name} (Cont.)`,
             GroupId: oldList.GroupId,
             isArchived: false
