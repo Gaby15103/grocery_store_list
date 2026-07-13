@@ -57,6 +57,7 @@ export default function GroceryListScreen() {
         toggleStatus,
         setSort,
         applySort,
+        currentListId,
         setOpenedList,
         itemTypes
     } = useItems();
@@ -224,7 +225,7 @@ export default function GroceryListScreen() {
                         const finalName = `Liste du ${formattedDate}`;
                         try {
                             closeAlert();
-                            const nextListId = await archiveList(sessionId, finalName, effectiveGroupId, isCurrentGroupShared);
+                            const nextListId = await archiveList(currentListId, finalName, effectiveGroupId, isCurrentGroupShared);
 
                             if (nextListId) {
                                 router.replace({
